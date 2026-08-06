@@ -1,0 +1,42 @@
+cat << 'EOF' > bot.py
+import discord
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+class MyClient(discord.Client):
+    async def on_ready(self):
+        print(f"logged in as {self.user}".lower())
+
+    async def on_message(self, message):
+        if message.author == self.user:
+            return
+
+        if message.content.lower() == ",rules":
+            try:
+                await message.delete()
+            except discord.Forbidden:
+                pass
+            except discord.HTTPException:
+                pass
+
+            embed = discord.Embed(
+                title="RULES",
+                description=(
+                    "• **No Slurs:** Please refrain from using racist and homophobic slurs.\n\n"
+                    "• **Follow Guidelines:** Adhere to Discord's Terms of Service and keep the community safe.\n\n"
+                    "• **No NSFW or Toxicity:** Strictly no NSFW content, e-dating, or toxic behavior.\n\n"
+                    "• **Use Common Sense:** Be careful with your words. No telling others to harm themselves.\n\n"
+                    "• **No Public Drama:** Take arguments to DMs. Ping <@&1534625978884690061> <@&1534626036556365824> if it escalates and won't move to DMs so staff can monitor :))\n\n"
+                    "• **Privacy & Safety:** Avoid sharing personal information such as home addresses or IP addresses. Doxxing is strictly prohibited.\n\n"
+                    "• **No Spam or Self-Promotion:** Refrain from spamming and unauthorized advertising. Create a ticket to talk to staff if you want to promote.\n\n"
+                    "• **Consequences:** Violating any rule may result in a mute, kick, or ban. Appeals and readmissions can be discussed with staff."
+                ),
+                color=0x2b2d31
+            )
+            await message.channel.send(embed=embed)
+
+client = MyClient(intents=intents)
+client.run("MTUzNDk2OTMxNjkyMTgzNTcxMA.GK__uj.TGtkFeOqrbo-14wUtn-TA6QXXO1JfGrtOxPQYM")
+EOF
+python3 bot.py
