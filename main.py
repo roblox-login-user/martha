@@ -46,20 +46,18 @@ def get_decorated_verify_embed():
 @bot.event
 async def on_member_join(member):
     # Find the welcome channel automatically in your server
-    # You can name your system channel 'welcome' or 'joins'
     channel = discord.utils.get(member.guild.text_channels, name="welcome")
     
     if channel is not None:
         embed = discord.Embed(
             description=(
                 ".　　 . . 　 ˚　. .　　. 　 ˚　.　　　　 . . 　 ˚　. ⁠\n"
-                f", ⟡ ‎﹒ ⟢﹒‎﹒welc… {member.mention}! ❞ ‎﹒\n"
+                f", ⟡ ‎﹒ ⟢﹒‎﹒**welc**… {member.mention}! ❞ ‎﹒\n"
                 "⁠♫・<#1534369682331799552> ⁠⭓<#1534369268748128328> ‎﹒ ❀\n"
                 "𝆕  ◟ , enjoy your stay! "
             ),
             color=0x2b2d31
         )
-        # Adds a cute sparkle decoration pattern to the side
         embed.set_author(name="𓈒    ✿    new arrival!    𝅄", icon_url=member.display_avatar.url)
         await channel.send(embed=embed)
 
@@ -108,8 +106,8 @@ async def manual_welcome_test(ctx):
 
     embed = discord.Embed(
         description=(
-            ".　　 . . 　 ˚　. .　　. 　 ˚　.　　　　 . . 　 ˚　. ⁠\n"
-            f", ⟡ ‎﹒ ⟢﹒‎﹒welc… {ctx.author.mention}! ❞ ‎﹒\n"
+            ".　　 . . 　 ˚　. .　. 　 ˚　.　　　　 . . 　 ˚　. ⁠\n"
+            f", ⟡ ‎﹒ ⟢﹒‎﹒**welc**… {ctx.author.mention}! ❞ ‎﹒\n"
             "⁠♫・<#1534369682331799552> ⁠⭓<#1534369268748128328> ‎﹒ ❀\n"
             "𝆕  ◟ , enjoy your stay! "
         ),
