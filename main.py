@@ -2,12 +2,19 @@ import discord
 from discord.ext import commands
 import os
 
-# 1. SETUP INTENTS & PREFIX BOT ONLY
+# 1. SETUP INTENTS & BOT PREFIX
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True 
 
 bot = commands.Bot(command_prefix=",", intents=intents)
+
+# Simple dictionaries to remember the channel IDs across server restarts
+# In a massive bot, you'd use a database, but this works perfectly for your server!
+saved_channels = {
+    "verify_channel_id": None,
+    "welcome_channel_id": None
+}
 
 # 2. INTERACTIVE BUTTON INTERFACE
 class VerifyView(discord.ui.View):
@@ -59,10 +66,18 @@ def get_decorated_welcome_embed(target_user):
     embed.set_image(url="https://cdn.discordapp.com/attachments/1534974589568942221/1535052679078744084/78700BDC-447A-4AF3-A5C5-508BABB43DEB.gif?ex=6a765cb6&is=6a750b36&hm=fb2d433ba29225b888b70f977c512ffc37605343f28dea328f18a5511034463f&")
     return embed
 
-# 4. AUTOMATED CUTE WELCOME MESSAGE (Triggers when anyone joins)
+# 4. AUTOMATED WELCOME MESSAGE (Triggers when anyone joins)
 @bot.event
 async def on_member_join(member):
-    channel = discord.utils.get(member.guild.text_channels, name="welcome")
+    # Check if you have set a channel using ,welcome
+    channel_id = saved_channels["welcome_channel_id"]
+    
+    if channel_id is not None:
+        channel = member.guild.get_channel(channel_id)
+    else:
+        # Fallback to finding a channel named 'welcome' if none was explicitly configured yet
+        channel = discord.utils.get(member.guild.text_channels, name="welcome")
+        
     if channel is not None:
         embed = get_decorated_welcome_embed(member)
         await channel.send(embed=embed)
@@ -99,20 +114,26 @@ async def verify_prefix_command(ctx):
     except (discord.Forbidden, discord.HTTPException):
         pass
 
+    # Lock this channel ID in as your NEW permanent verification channel
+    saved_channels["verify_channel_id"] = ctx.channel.id
+
     embed = get_decorated_verify_embed()
     await ctx.send(embed=embed, view=VerifyView())
 
 @bot.command(name="welcome")
-async def manual_welcome_test(ctx):
+async def welcome_setup_command(ctx):
     try:
         await ctx.message.delete()
     except (discord.Forbidden, discord.HTTPException):
         pass
 
+    # Lock this channel ID in as your NEW permanent welcome destination!
+    saved_channels["welcome_channel_id"] = ctx.channel.id
+
+    # Sends a confirmation panel and runs a layout preview test instantly
     embed = get_decorated_welcome_embed(ctx.author)
     await ctx.send(embed=embed)
 
-# NEW PREFIX COMMAND FOR SERVER BOOSTERS
 @bot.command(name="boost")
 async def boost_command(ctx):
     try:
