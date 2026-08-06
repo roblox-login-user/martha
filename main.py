@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import os
 
@@ -13,6 +14,8 @@ saved_channels = {
     "welcome_channel_id": None,
     "boost_channel_id": None
 }
+
+user_warns = {}
 
 class VerifyView(discord.ui.View):
     def __init__(self):
@@ -36,6 +39,10 @@ class VerifyView(discord.ui.View):
 @bot.event
 async def on_ready():
     bot.add_view(VerifyView())
+    try:
+        await bot.tree.sync()
+    except Exception as e:
+        print(e)
     print(f"logged in as {bot.user}".lower())
 
 def get_decorated_verify_embed():
@@ -121,6 +128,8 @@ async def rules_command(ctx):
             "   𝅄 never share sensitive real-world info like IP or home addresses. malicious doxxing triggers an unappealable ban.\n\n"
             "𓈒  ✿  **no spam or promotion**\n"
             "   𝅄 do not spam text walls or link advertisements without permissions. please open a staff ticket if you wish to apply for promotional privileges.\n\n"
+            "𓈒  ✿  **3 warn system**\n"
+            "   𝅄 receiving 3 formal staff warnings results in an automatic permanent ban from the server.\n\n"
             "𓈒  ✿  **consequences**\n"
             "   𝅄 infractions result in account mutes, kicks, or server bans. you may coordinate with staff privately regarding appeal requests."
         ),
@@ -148,5 +157,57 @@ async def boost_setup_command(ctx):
     except: pass
     saved_channels["boost_channel_id"] = ctx.channel.id
     await ctx.send(embed=get_decorated_boost_embed(ctx.author))
+
+@bot.tree.command(name="echo", description="echo a message to a channel")
+@app_commands.describe(message="the message to echo", channel="the channel to send it in")
+async def echo(interaction: discord.Interaction, message: str, channel: discord.TextChannel = None):
+    target_channel = channel or interaction.channel
+    await target_channel.send(message)
+    await interaction.response.send_message("message sent!", ephemeral=True)
+
+@bot.tree.command(name="ban", description="ban a user from the server")
+@app_commands.describe(user="the user to ban", time="optional duration", reason="reason for ban")
+async def ban(interaction: discord.Interaction, user: discord.Member, time: str = None, reason: str = None):
+    if not interaction.user.guild_permissions.ban_members:
+        await interaction.response.send_message("you do not have permission to use this command.", ephemeral=True)
+        return
+    ban_reason = f"banned by {interaction.user}"
+    if time:
+        ban_reason += f" | duration: {time}"
+    if reason:
+        ban_reason += f" | reason: {reason}"
+    
+    try:
+        await user.ban(reason=ban_reason)
+        await interaction.response.send_message(f"successfully banned {user.mention}.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"failed to ban user: {e}", ephemeral=True)
+
+@bot.tree.command(name="warn", description="warn a user")
+@app_commands.describe(user="the user to warn", reason="reason for the warning")
+async def warn(interaction: discord.Interaction, user: discord.Member, reason: str = "no reason provided"):
+    if not interaction.user.guild_permissions.moderate_members:
+        await interaction.response.send_message("you do not have permission to use this command.", ephemeral=True)
+        return
+    
+    uid = user.id
+    user_warns[uid] = user_warns.get(uid, 0) + 1
+    count = user_warns[uid]
+
+    try:
+        await user.send(f"you have been warned in **{interaction.guild.name}**.\nreason: {reason}\nwarn count: {count}/3")
+    except:
+        pass
+
+    if count >= 3:
+        try:
+            await user.ban(reason="reached 3 warnings")
+            await interaction.response.send_message(f"warned {user.mention} ({count}/3). they reached 3 warnings and have been automatically banned.", ephemeral=True)
+            user_warns[uid] = 0
+            return
+        except Exception as e:
+            pass
+
+    await interaction.response.send_message(f"warned {user.mention}. current warnings: {count}/3.", ephemeral=True)
 
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
