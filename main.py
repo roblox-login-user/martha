@@ -2,9 +2,10 @@ import discord
 from discord.ext import commands
 import os
 
-# 1. SETUP BOTH COMMAND TYPES IN ONE AREA
+# 1. SETUP INTENTS & PREFIX BOT ONLY
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True  # Required to detect when new users join the server
 
 bot = commands.Bot(command_prefix=",", intents=intents)
 
@@ -28,17 +29,12 @@ class VerifyView(discord.ui.View):
             await interaction.user.add_roles(role)
             await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
 
-# 3. STARTUP LOGS & SYNCING
+# 3. STARTUP LOGS
 @bot.event
 async def on_ready():
     print(f"logged in as {bot.user}".lower())
-    try:
-        synced = await bot.tree.sync()
-        print(f"synced {len(synced)} slash command(s)")
-    except Exception as e:
-        print(f"failed to sync commands: {e}")
 
-# Helper function to generate your decorated verification content
+# Helper function to generate your decorated verification panel
 def get_decorated_verify_embed():
     return discord.Embed(
         title="‎ ㅤ         𓈒    ✿    verify here!    𝅄          ۪   ݁   𓈒",
@@ -46,7 +42,28 @@ def get_decorated_verify_embed():
         color=0x2b2d31
     )
 
-# 4. PREFIX COMMANDS AREA
+# 4. AUTOMATED CUTE WELCOME MESSAGE (Triggers when anyone joins)
+@bot.event
+async def on_member_join(member):
+    # Find the welcome channel automatically in your server
+    # You can name your system channel 'welcome' or 'joins'
+    channel = discord.utils.get(member.guild.text_channels, name="welcome")
+    
+    if channel is not None:
+        embed = discord.Embed(
+            description=(
+                ".　　 . . 　 ˚　. .　　. 　 ˚　.　　　　 . . 　 ˚　. ⁠\n"
+                f", ⟡ ‎﹒ ⟢﹒‎﹒welc… {member.mention}! ❞ ‎﹒\n"
+                "⁠♫・<#1534369682331799552> ⁠⭓<#1534369268748128328> ‎﹒ ❀\n"
+                "𝆕  ◟ , enjoy your stay! "
+            ),
+            color=0x2b2d31
+        )
+        # Adds a cute sparkle decoration pattern to the side
+        embed.set_author(name="𓈒    ✿    new arrival!    𝅄", icon_url=member.display_avatar.url)
+        await channel.send(embed=embed)
+
+# 5. PREFIX COMMANDS AREA
 @bot.command(name="rules")
 async def rules_command(ctx):
     try:
@@ -81,11 +98,25 @@ async def verify_prefix_command(ctx):
     embed = get_decorated_verify_embed()
     await ctx.send(embed=embed, view=VerifyView())
 
-# 5. SLASH COMMANDS AREA
-@bot.tree.command(name="verify", description="sends the verification panel")
-async def verify_slash_command(interaction: discord.Interaction):
-    embed = get_decorated_verify_embed()
-    await interaction.response.send_message(embed=embed, view=VerifyView())
+# Manually test the welcome template layout inside a channel
+@bot.command(name="welcome")
+async def manual_welcome_test(ctx):
+    try:
+        await ctx.message.delete()
+    except (discord.Forbidden, discord.HTTPException):
+        pass
+
+    embed = discord.Embed(
+        description=(
+            ".　　 . . 　 ˚　. .　　. 　 ˚　.　　　　 . . 　 ˚　. ⁠\n"
+            f", ⟡ ‎﹒ ⟢﹒‎﹒welc… {ctx.author.mention}! ❞ ‎﹒\n"
+            "⁠♫・<#1534369682331799552> ⁠⭓<#1534369268748128328> ‎﹒ ❀\n"
+            "𝆕  ◟ , enjoy your stay! "
+        ),
+        color=0x2b2d31
+    )
+    embed.set_author(name="𓈒    ✿    welcome test!    𝅄", icon_url=ctx.author.display_avatar.url)
+    await ctx.send(embed=embed)
 
 # 6. RUN THE BOT SECURELY
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
