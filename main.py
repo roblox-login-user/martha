@@ -38,6 +38,7 @@ class VerifyView(discord.ui.View):
 # 3. STARTUP LOGS
 @bot.event
 async def on_ready():
+    bot.add_view(VerifyView())
     print(f"logged in as {bot.user}".lower())
 
 # Helper structures for your aesthetic templates
@@ -53,10 +54,10 @@ def get_decorated_verify_embed():
 def get_decorated_welcome_embed(target_user):
     embed = discord.Embed(
         description=(
-            ".　　 . . 　 ˚　. .　　. 　 ˚　.　　　　 . . 　 ˚　. ⁠\n"
+            ".   . .   ˚ . .  .   ˚ .     . .   ˚ . ⁠\n"
             f", ⟡ ‎﹒ ⟢﹒‎﹒**welc**… {target_user.mention}! ❞ ‎﹒\n"
             "⁠♫・<#1534369682331799552> ⁠⭓<#1534369268748128328> ‎﹒ ❀\n"
-            "𝆕  ◟ , enjoy your stay! "
+            "𝆕  ◟ , enjoy your stay! "
         ),
         color=0x2b2d31
     )
