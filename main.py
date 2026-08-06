@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 import os
 
-# 1. SETUP INTENTS & BOT PREFIX
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True 
@@ -15,7 +14,6 @@ saved_channels = {
     "boost_channel_id": None
 }
 
-# 2. INTERACTIVE BUTTON INTERFACE
 class VerifyView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -35,19 +33,18 @@ class VerifyView(discord.ui.View):
             await interaction.user.add_roles(role)
             await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
 
-# 3. STARTUP LOGS
 @bot.event
 async def on_ready():
     bot.add_view(VerifyView())
     print(f"logged in as {bot.user}".lower())
 
-# Helper structures for your aesthetic templates
 def get_decorated_verify_embed():
     embed = discord.Embed(
         title="‎ ㅤ         𓈒    ✿    verify here!    𝅄          ۪   ݁   𓈒",
         description="‎\n‎ ㅤ ۪ 𝅄 press the button below to gain access to the rest of the server !",
         color=0x2b2d31
     )
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1534974589568942221/1535053228784357447/41E85482-D59D-4342-ACDB-F323F94F743B.gif?ex=6a765d39&is=6a750bb9&hm=2e10bf1bcf4be571b00387370d5a95e8213dd3045bcc90f054fc3a16210b78d5&")
     return embed
 
 def get_decorated_welcome_embed(target_user):
@@ -61,6 +58,7 @@ def get_decorated_welcome_embed(target_user):
         color=0x2b2d31
     )
     embed.set_author(name="𓈒    ✿    new arrival!    𝅄", icon_url=target_user.display_avatar.url)
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1534974589568942221/1535052679078744084/78700BDC-447A-4AF3-A5C5-508BABB43DEB.gif?ex=6a765cb6&is=6a750b36&hm=fb2d433ba29225b888b70f977c512ffc37605343f28dea328f18a5511034463f&")
     return embed
 
 def get_decorated_boost_embed(target_user):
@@ -69,9 +67,9 @@ def get_decorated_boost_embed(target_user):
         description=f"‎\n‎ ㅤ ۪ 𝅄 tysm for boosting the server {target_user.mention}! we appreciate your support!",
         color=0x2b2d31
     )
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1534974589568942221/1535053258593407048/F78E6667-7B31-4736-8E4D-9337BDAF3FD0.gif?ex=6a765d40&is=6a750bc0&hm=3557e5a996b0f4584c6e00ade1d6fedd1ad9460fe27d8a0f16cea8b6a1157a36&")
     return embed
 
-# 4. AUTOMATED EVENTS (Welcome & Boost Detect)
 @bot.event
 async def on_member_join(member):
     channel_id = saved_channels["welcome_channel_id"]
@@ -98,7 +96,6 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# 5. PREFIX COMMANDS AREA
 @bot.command(name="rules")
 async def rules_command(ctx):
     try: 
@@ -152,5 +149,4 @@ async def boost_setup_command(ctx):
     saved_channels["boost_channel_id"] = ctx.channel.id
     await ctx.send(embed=get_decorated_boost_embed(ctx.author))
 
-# 6. RUN THE BOT SECURELY
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
