@@ -129,7 +129,7 @@ async def rules_command(ctx):
             "𓈒  ✿  **no spam or promotion**\n"
             "   𝅄 do not spam text walls or link advertisements without permissions. please open a staff ticket if you wish to apply for promotional privileges.\n\n"
             "𓈒  ✿  **3 warn system**\n"
-            "   𝅄 receiving 3 formal staff warnings results in an automatic permanent ban from the server.\n\n"
+            "   𝅄 receiving 3 formal staff warnings results in an automatic kick from the server.\n\n"
             "𓈒  ✿  **consequences**\n"
             "   𝅄 infractions result in account mutes, kicks, or server bans. you may coordinate with staff privately regarding appeal requests."
         ),
@@ -201,8 +201,8 @@ async def warn(interaction: discord.Interaction, user: discord.Member, reason: s
 
     if count >= 3:
         try:
-            await user.ban(reason="reached 3 warnings")
-            await interaction.response.send_message(f"warned {user.mention} ({count}/3). they reached 3 warnings and have been automatically banned.", ephemeral=True)
+            await user.kick(reason="reached 3 warnings")
+            await interaction.response.send_message(f"warned {user.mention} ({count}/3). they reached 3 warnings and have been automatically kicked.", ephemeral=True)
             user_warns[uid] = 0
             return
         except Exception as e:
