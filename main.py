@@ -1,10 +1,36 @@
-cat << 'EOF' > bot.py
 import discord
+import os
 
 intents = discord.Intents.default()
 intents.message_content = True
 
+class VerifyView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="verify", style=discord.ButtonStyle.green, custom_id="verify_button")
+    async def verify_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        role_id = 1534626110309011646
+        role = interaction.guild.get_role(role_id)
+        
+        if role is None:
+            await interaction.response.send_message("verification role not found on this server.", ephemeral=True)
+            return
+
+        if role in interaction.user.roles:
+            await interaction.response.send_message("already verified", ephemeral=True)
+        else:
+            await interaction.user.add_roles(role)
+            await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
+
 class MyClient(discord.Client):
+    def __init__(self):
+        super().__init__(intents=intents)
+        self.tree = discord.app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        await self.tree.sync()
+
     async def on_ready(self):
         print(f"logged in as {self.user}".lower())
 
@@ -36,7 +62,16 @@ class MyClient(discord.Client):
             )
             await message.channel.send(embed=embed)
 
-client = MyClient(intents=intents)
-client.run("MTUzNDk2OTMxNjkyMTgzNTcxMA.GK__uj.TGtkFeOqrbo-14wUtn-TA6QXXO1JfGrtOxPQYM")
-EOF
-python3 bot.py
+client = MyClient()
+
+@client.tree.command(name="verify", description="sends the verification panel")
+async def verify(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="VERIFICATION",
+        description="click the button below to verify yourself and gain access to the server.",
+        color=0x2b2d31
+    )
+    await interaction.response.send_message(embed=embed, view=VerifyView())
+
+# This grabs your token securely from Bot-Hosting's environment variables
+client.run(os.getenv("DISCORD_BOT_TOKEN"))
