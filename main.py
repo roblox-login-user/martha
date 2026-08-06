@@ -9,11 +9,10 @@ intents.members = True
 
 bot = commands.Bot(command_prefix=",", intents=intents)
 
-# Simple dictionaries to remember the channel IDs across server restarts
-# In a massive bot, you'd use a database, but this works perfectly for your server!
 saved_channels = {
     "verify_channel_id": None,
-    "welcome_channel_id": None
+    "welcome_channel_id": None,
+    "boost_channel_id": None
 }
 
 # 2. INTERACTIVE BUTTON INTERFACE
@@ -41,17 +40,16 @@ class VerifyView(discord.ui.View):
 async def on_ready():
     print(f"logged in as {bot.user}".lower())
 
-# Helper function to generate your decorated verification panel with your custom GIF
+# Helper structures for your aesthetic templates
 def get_decorated_verify_embed():
     embed = discord.Embed(
         title="‎ ㅤ         𓈒    ✿    verify here!    𝅄          ۪   ݁   𓈒",
         description="‎\n‎ ㅤ ۪ 𝅄 press the button below to gain access to the rest of the server !",
         color=0x2b2d31
     )
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1534974589568942221/1535053228784357447/41E85482-D59D-4342-ACDB-F323F94F743B.gif?ex=6a765d39&is=6a750bb9&hm=2e10bf1bcf4be571b00387370d5a95e8213dd3045bcc90f054fc3a16210b78d5&")
+    embed.set_image(url="https://discordapp.com&")
     return embed
 
-# Helper function to generate your decorated welcome template with your custom GIF
 def get_decorated_welcome_embed(target_user):
     embed = discord.Embed(
         description=(
@@ -63,45 +61,73 @@ def get_decorated_welcome_embed(target_user):
         color=0x2b2d31
     )
     embed.set_author(name="𓈒    ✿    new arrival!    𝅄", icon_url=target_user.display_avatar.url)
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1534974589568942221/1535052679078744084/78700BDC-447A-4AF3-A5C5-508BABB43DEB.gif?ex=6a765cb6&is=6a750b36&hm=fb2d433ba29225b888b70f977c512ffc37605343f28dea328f18a5511034463f&")
+    embed.set_image(url="https://discordapp.com&")
     return embed
 
-# 4. AUTOMATED WELCOME MESSAGE (Triggers when anyone joins)
+def get_decorated_boost_embed(target_user):
+    embed = discord.Embed(
+        title="‎ ㅤ         𓈒    ✿    thank you for boosting!    𝅄          ۪   ݁   𓈒",
+        description=f"‎\n‎ ㅤ ۪ 𝅄 tysm for boosting the server {target_user.mention}! we appreciate your support!",
+        color=0x2b2d31
+    )
+    embed.set_image(url="https://discordapp.com&")
+    return embed
+
+# 4. AUTOMATED EVENTS (Welcome & Boost Detect)
 @bot.event
 async def on_member_join(member):
-    # Check if you have set a channel using ,welcome
     channel_id = saved_channels["welcome_channel_id"]
-    
-    if channel_id is not None:
-        channel = member.guild.get_channel(channel_id)
-    else:
-        # Fallback to finding a channel named 'welcome' if none was explicitly configured yet
-        channel = discord.utils.get(member.guild.text_channels, name="welcome")
+    channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
+    if channel:
+        await channel.send(embed=get_decorated_welcome_embed(member))
+
+@bot.event
+async def on_message(message):
+    if message.type in (discord.MessageType.premium_guild_subscription, 
+                        discord.MessageType.premium_guild_tier_1, 
+                        discord.MessageType.premium_guild_tier_2, 
+                        discord.MessageType.premium_guild_tier_3):
+        try:
+            await message.delete()
+        except (discord.Forbidden, discord.HTTPException):
+            pass
+
+        channel_id = saved_channels["boost_channel_id"]
+        channel = message.guild.get_channel(channel_id) if channel_id else message.channel
         
-    if channel is not None:
-        embed = get_decorated_welcome_embed(member)
-        await channel.send(embed=embed)
+        if channel:
+            await channel.send(embed=get_decorated_boost_embed(message.author))
+
+    await bot.process_commands(message)
 
 # 5. PREFIX COMMANDS AREA
 @bot.command(name="rules")
 async def rules_command(ctx):
-    try:
+    try: 
         await ctx.message.delete()
-    except (discord.Forbidden, discord.HTTPException):
+    except: 
         pass
 
     embed = discord.Embed(
         title="‎ ㅤ         𓈒    ✿    server rules!    𝅄          ۪   ݁   𓈒",
         description=(
             "‎\n"
-            "• **No Slurs:** Please refrain from using racist and homophobic slurs.\n\n"
-            "• **Follow Guidelines:** Adhere to Discord's Terms of Service and keep the community safe.\n\n"
-            "• **No NSFW or Toxicity:** Strictly no NSFW content, e-dating, or toxic behavior.\n\n"
-            "• **Use Common Sense:** Be careful with your words. No telling others to harm themselves.\n\n"
-            "• **No Public Drama:** Take arguments to DMs. Ping <@&1534625978884690061> <@&1534626036556365824> if it escalates and won't move to DMs so staff can monitor :))\n\n"
-            "• **Privacy & Safety:** Avoid sharing personal information such as home addresses or IP addresses. Doxxing is strictly prohibited.\n\n"
-            "• **No Spam or Self-Promotion:** Refrain from spamming and unauthorized advertising. Create a ticket to talk to staff if you want to promote.\n\n"
-            "• **Consequences:** Violating any rule may result in a mute, kick, or ban. Appeals and readmissions can be discussed with staff."
+            "𓈒  ✿  **no slurs**\n"
+            "   𝅄 please keep our chat safe and kind. racist, homophobic, or hate-driven language is strictly prohibited.\n\n"
+            "𓈒  ✿  **follow guidelines**\n"
+            "   𝅄 please adhere to discord's formal terms of service to safeguard our community atmosphere.\n\n"
+            "𓈒  ✿  **no nsfw or toxicity**\n"
+            "   𝅄 avoid any explicit content, e-dating behaviors, or general toxicity inside public text areas.\n\n"
+            "𓈒  ✿  **use common sense**\n"
+            "   𝅄 think before you speak. malicious language, severe harassment, or encouraging self-harm is not tolerated.\n\n"
+            "𓈒  ✿  **no public drama**\n"
+            "   𝅄 keep interpersonal arguments or disagreements strictly inside private message chats. if an issue escalates or requires dynamic moderation, please immediately alert <@&1534625978884690061> or <@&1534626036556365824> so our staff team can assess the room.\n\n"
+            "𓈒  ✿  **privacy & safety**\n"
+            "   𝅄 never share sensitive real-world info like IP or home addresses. malicious doxxing triggers an unappealable ban.\n\n"
+            "𓈒  ✿  **no spam or promotion**\n"
+            "   𝅄 do not spam text walls or link advertisements without permissions. please open a staff ticket if you wish to apply for promotional privileges.\n\n"
+            "𓈒  ✿  **consequences**\n"
+            "   𝅄 infractions result in account mutes, kicks, or server bans. you may coordinate with staff privately regarding appeal requests."
         ),
         color=0x2b2d31
     )
@@ -109,45 +135,24 @@ async def rules_command(ctx):
 
 @bot.command(name="verify")
 async def verify_prefix_command(ctx):
-    try:
-        await ctx.message.delete()
-    except (discord.Forbidden, discord.HTTPException):
-        pass
-
-    # Lock this channel ID in as your NEW permanent verification channel
+    try: await ctx.message.delete()
+    except: pass
     saved_channels["verify_channel_id"] = ctx.channel.id
-
-    embed = get_decorated_verify_embed()
-    await ctx.send(embed=embed, view=VerifyView())
+    await ctx.send(embed=get_decorated_verify_embed(), view=VerifyView())
 
 @bot.command(name="welcome")
 async def welcome_setup_command(ctx):
-    try:
-        await ctx.message.delete()
-    except (discord.Forbidden, discord.HTTPException):
-        pass
-
-    # Lock this channel ID in as your NEW permanent welcome destination!
+    try: await ctx.message.delete()
+    except: pass
     saved_channels["welcome_channel_id"] = ctx.channel.id
-
-    # Sends a confirmation panel and runs a layout preview test instantly
-    embed = get_decorated_welcome_embed(ctx.author)
-    await ctx.send(embed=embed)
+    await ctx.send(embed=get_decorated_welcome_embed(ctx.author))
 
 @bot.command(name="boost")
-async def boost_command(ctx):
-    try:
-        await ctx.message.delete()
-    except (discord.Forbidden, discord.HTTPException):
-        pass
-
-    embed = discord.Embed(
-        title="‎ ㅤ         𓈒    ✿    thank you for boosting!    𝅄          ۪   ݁   𓈒",
-        description=f"‎\n‎ ㅤ ۪ 𝅄 tysm for boosting the server {ctx.author.mention}! we appreciate your support!",
-        color=0x2b2d31
-    )
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1534974589568942221/1535053258593407048/F78E6667-7B31-4736-8E4D-9337BDAF3FD0.gif?ex=6a765d40&is=6a750bc0&hm=3557e5a996b0f4584c6e00ade1d6fedd1ad9460fe27d8a0f16cea8b6a1157a36&")
-    await ctx.send(embed=embed)
+async def boost_setup_command(ctx):
+    try: await ctx.message.delete()
+    except: pass
+    saved_channels["boost_channel_id"] = ctx.channel.id
+    await ctx.send(embed=get_decorated_boost_embed(ctx.author))
 
 # 6. RUN THE BOT SECURELY
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
