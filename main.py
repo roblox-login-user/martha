@@ -48,7 +48,6 @@ def get_decorated_verify_embed():
         description="‎\n‎ ㅤ ۪ 𝅄 press the button below to gain access to the rest of the server !",
         color=0x2b2d31
     )
-    embed.set_image(url="https://discordapp.com&")
     return embed
 
 def get_decorated_welcome_embed(target_user):
@@ -62,7 +61,6 @@ def get_decorated_welcome_embed(target_user):
         color=0x2b2d31
     )
     embed.set_author(name="𓈒    ✿    new arrival!    𝅄", icon_url=target_user.display_avatar.url)
-    embed.set_image(url="https://discordapp.com&")
     return embed
 
 def get_decorated_boost_embed(target_user):
@@ -71,7 +69,6 @@ def get_decorated_boost_embed(target_user):
         description=f"‎\n‎ ㅤ ۪ 𝅄 tysm for boosting the server {target_user.mention}! we appreciate your support!",
         color=0x2b2d31
     )
-    embed.set_image(url="https://discordapp.com&")
     return embed
 
 # 4. AUTOMATED EVENTS (Welcome & Boost Detect)
