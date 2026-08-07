@@ -6,6 +6,7 @@ import os
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True 
+intents.guilds = True
 
 bot = commands.Bot(command_prefix=",", intents=intents)
 
@@ -49,11 +50,14 @@ class VerifyView(discord.ui.View):
             await interaction.user.add_roles(role)
             await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
 
-@tasks.loop(minutes=5)
-async def update_member_count_status():
+async def update_status_member_count():
     total_members = sum(guild.member_count for guild in bot.guilds)
-    activity = discord.Activity(type=discord.ActivityType.playing, name=f"{total_members} members")
+    activity = discord.Streaming(name=f"{total_members} members", url="https://www.twitch.tv/discord")
     await bot.change_presence(activity=activity)
+
+@tasks.loop(minutes=5)
+async def member_count_loop():
+    await update_status_member_count()
 
 @bot.event
 async def on_ready():
@@ -62,14 +66,14 @@ async def on_ready():
         await bot.tree.sync()
     except Exception as e:
         print(e)
-    if not update_member_count_status.is_running():
-        update_member_count_status.start()
+    if not member_count_loop.is_running():
+        member_count_loop.start()
+    await update_status_member_count()
     print(f"logged in as {bot.user}".lower())
 
 @bot.event
 async def on_member_join(member):
-    total_members = sum(guild.member_count for guild in bot.guilds)
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"{total_members} members"))
+    await update_status_member_count()
 
     channel_id = saved_channels["welcome_channel_id"]
     channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
@@ -78,8 +82,7 @@ async def on_member_join(member):
 
 @bot.event
 async def on_member_remove(member):
-    total_members = sum(guild.member_count for guild in bot.guilds)
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"{total_members} members"))
+    await update_status_member_count()
 
 def get_decorated_verify_embed():
     embed = discord.Embed(
@@ -178,6 +181,16 @@ async def sync_command(ctx):
         await ctx.message.delete()
     except:
         pass
+    
+    for guild in bot.guilds:
+        await guild.chunk(cache=True)
+    
+    await update_status_member_count()
+    
+    try:
+        await bot.tree.sync()
+    except Exception as e:
+        print(e)
     
     verify_id = saved_channels["verify_channel_id"]
     welcome_id = saved_channels["welcome_channel_id"]
