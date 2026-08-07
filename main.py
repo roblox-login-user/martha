@@ -268,7 +268,7 @@ async def gif_command(ctx):
                 file_url = embed.thumbnail.url
                 break
 
-Na    if not file_url:
+    if not file_url:
         await ctx.send("the target message does not contain a valid file.", delete_after=5)
         return
 
