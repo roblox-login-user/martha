@@ -52,7 +52,13 @@ class VerifyView(discord.ui.View):
 
 async def update_status_member_count():
     total_members = sum(guild.member_count for guild in bot.guilds)
-    activity = discord.Streaming(name=f"{total_members} members", url="https://www.twitch.tv/discord")
+    current_activity = bot.activity
+    
+    if isinstance(current_activity, discord.Streaming):
+        activity = discord.Streaming(name=f"{total_members} members", url=current_activity.url)
+    else:
+        activity = discord.Streaming(name=f"{total_members} members", url="https://www.twitch.tv/discord")
+        
     await bot.change_presence(activity=activity)
 
 @tasks.loop(minutes=5)
@@ -350,12 +356,19 @@ async def status(interaction: discord.Interaction, type: str):
         "streaming": discord.Status.online
     }
 
+    total_members = sum(guild.member_count for guild in bot.guilds)
+
     if type == "streaming":
-        total_members = sum(guild.member_count for guild in bot.guilds)
         activity = discord.Streaming(name=f"{total_members} members", url="https://www.twitch.tv/discord")
         await bot.change_presence(status=discord.Status.online, activity=activity)
     else:
-        await bot.change_presence(status=status_types.get(type, discord.Status.online))
+        current_activity = bot.activity
+        if isinstance(current_activity, discord.Streaming):
+            activity = discord.Streaming(name=f"{total_members} members", url=current_activity.url)
+        else:
+            activity = discord.Streaming(name=f"{total_members} members", url="https://www.twitch.tv/discord")
+        
+        await bot.change_presence(status=status_types.get(type, discord.Status.online), activity=activity)
 
     await interaction.response.send_message(f"successfully changed bot status to **{type}**.", ephemeral=True)
 
