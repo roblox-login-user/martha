@@ -300,20 +300,13 @@ async def lock_channel(ctx):
     await ctx.send("channel has been locked for that role.", delete_after=5)
 
 @bot.tree.command(name="status", description="change the bot's presence status")
-@app_commands.describe(text="the status message", type="the type of activity", status="the online status")
+@app_commands.describe(text="the status message", type="the type of activity")
 @app_commands.choices(type=[
     app_commands.Choice(name="playing", value="playing"),
     app_commands.Choice(name="streaming", value="streaming"),
-    app_commands.Choice(name="listening", value="listening"),
-    app_commands.Choice(name="watching", value="watching"),
-    app_commands.Choice(name="competing", value="competing")
-], status=[
-    app_commands.Choice(name="online", value="online"),
-    app_commands.Choice(name="idle", value="idle"),
-    app_commands.Choice(name="dnd", value="dnd"),
-    app_commands.Choice(name="invisible", value="invisible")
+    app_commands.Choice(name="listening", value="listening")
 ])
-async def status(interaction: discord.Interaction, text: str, type: str = "playing", status: str = "online"):
+async def status(interaction: discord.Interaction, text: str, type: str = "playing"):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("you do not have permission to use this command.", ephemeral=True)
         return
@@ -321,22 +314,13 @@ async def status(interaction: discord.Interaction, text: str, type: str = "playi
     activity_types = {
         "playing": discord.ActivityType.playing,
         "streaming": discord.ActivityType.streaming,
-        "listening": discord.ActivityType.listening,
-        "watching": discord.ActivityType.watching,
-        "competing": discord.ActivityType.competing
-    }
-
-    status_types = {
-        "online": discord.Status.online,
-        "idle": discord.Status.idle,
-        "dnd": discord.Status.dnd,
-        "invisible": discord.Status.invisible
+        "listening": discord.ActivityType.listening
     }
 
     activity = discord.Activity(type=activity_types.get(type, discord.ActivityType.playing), name=text)
     
-    await bot.change_presence(activity=activity, status=status_types.get(status, discord.Status.online))
-    await interaction.response.send_message(f"successfully updated bot status to **{type} {text}** ({status}).", ephemeral=True)
+    await bot.change_presence(activity=activity)
+    await interaction.response.send_message(f"successfully updated bot status to **{type} {text}**.", ephemeral=True)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
