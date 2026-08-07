@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
+from datetime import datetime, timedelta
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -17,6 +18,10 @@ saved_channels = {
 }
 
 user_warns = {}
+
+# anti-raid tracking
+recent_joins = []
+antiraid_enabled = True
 
 intro_copy_text = (
     "```text\n"
@@ -49,9 +54,31 @@ class VerifyView(discord.ui.View):
             await interaction.user.add_roles(role)
             await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
 
+class AntiRaidView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="verify", style=discord.ButtonStyle.green, custom_id="antiraid_yes")
+    async def confirm_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("raid confirmed. taking action.", ephemeral=True)
+        try:
+            await interaction.guild.edit(verification_level=discord.VerificationLevel.highest)
+            await interaction.message.edit(content="🚨 **anti-raid confirmed!** server verification level has been set to highest.", view=None)
+        except Exception as e:
+            print(e)
+
+    @discord.ui.button(label="false alarm", style=discord.ButtonStyle.red, custom_id="antiraid_no")
+    async def deny_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("marked as false alarm.", ephemeral=True)
+        try:
+            await interaction.message.edit(content="✅ **anti-raid dismissed.** marked as a false alarm.", view=None)
+        except Exception as e:
+            print(e)
+
 @bot.event
 async def on_ready():
     bot.add_view(VerifyView())
+    bot.add_view(AntiRaidView())
     try:
         await bot.tree.sync()
     except Exception as e:
@@ -128,6 +155,33 @@ def get_decorated_intro_embed():
 
 @bot.event
 async def on_member_join(member):
+    global antiraid_enabled, recent_joins
+    
+    if antiraid_enabled:
+        now = datetime.utcnow()
+        recent_joins.append(now)
+        
+        # clean joins older than 10 seconds
+        recent_joins = [t for t in recent_joins if now - t < timedelta(seconds=10)]
+        
+        # if more than 5 joins happen within 10 seconds, trigger anti-raid notification
+        if len(recent_joins) >= 5:
+            try:
+                role = discord.utils.get(member.guild.roles, name="riotnot")
+                role_ping = role.mention if role else "@riotnot"
+                
+                for channel in member.guild.text_channels:
+                    if channel.permissions_for(member.guild.me).send_messages:
+                        await channel.send(
+                            f"{role_ping} we suspect a raid, please verify.",
+                            view=AntiRaidView()
+                        )
+                        break
+                # clear list so it doesn't spam instantly again
+                recent_joins.clear()
+            except Exception as e:
+                print(e)
+
     channel_id = saved_channels["welcome_channel_id"]
     channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
     if channel:
@@ -271,6 +325,29 @@ async def lock_channel(ctx):
     overwrite.send_messages = False
     await ctx.channel.set_permissions(role, overwrite=overwrite)
     await ctx.send("channel has been locked for that role.", delete_after=5)
+
+@bot.command(name="antiraid")
+@commands.has_permissions(administrator=True)
+async def antiraid_toggle(ctx, status: str = None):
+    global antiraid_enabled
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if status is None:
+        state = "enabled" if antiraid_enabled else "disabled"
+        await ctx.send(f"anti-raid protection is currently **{state}**.", delete_after=5)
+        return
+        
+    if status.lower() == "on":
+        antiraid_enabled = True
+        await ctx.send("anti-raid protection has been **enabled**.", delete_after=5)
+    elif status.lower() == "off":
+        antiraid_enabled = False
+        await ctx.send("anti-raid protection has been **disabled**.", delete_after=5)
+    else:
+        await ctx.send("please use `,antiraid on` or `,antiraid off`.", delete_after=5)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
