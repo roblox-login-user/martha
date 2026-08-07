@@ -97,10 +97,10 @@ def get_decorated_verify_embed():
 def get_decorated_welcome_embed(target_user):
     embed = discord.Embed(
         description=(
-            ".   . .   ˚ . .  .   ˚ .     . .   ˚ . ⁠\n"
+            ".    . .    ˚ . .  .    ˚ .     . .    ˚ . ⁠\n"
             f", ⟡ ‎﹒ ⟢﹒‎﹒**welc**… {target_user.mention}! ❞ ‎﹒\n"
             "⁠♫・<#1534369682331799552> ⁠⭓<#1534369268748128328> ‎﹒ ❀\n"
-            "𝆕  ◟ , enjoy your stay! "
+            "𝆕    ◟ , enjoy your stay! "
         ),
         color=0x2b2d31
     )
@@ -348,6 +348,22 @@ async def antiraid_toggle(ctx, status: str = None):
         await ctx.send("anti-raid protection has been **disabled**.", delete_after=5)
     else:
         await ctx.send("please use `,antiraid on` or `,antiraid off`.", delete_after=5)
+
+@bot.command(name="raidcheck")
+@commands.has_permissions(administrator=True)
+async def raidcheck_command(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    role = discord.utils.get(ctx.guild.roles, name="riotnot")
+    role_ping = role.mention if role else "@riotnot"
+    
+    await ctx.send(
+        f"{role_ping} we suspect a raid, please verify.",
+        view=AntiRaidView()
+    )
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
