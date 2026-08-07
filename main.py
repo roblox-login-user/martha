@@ -2,7 +2,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
-import io
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -13,7 +12,9 @@ bot = commands.Bot(command_prefix=",", intents=intents)
 saved_channels = {
     "verify_channel_id": None,
     "welcome_channel_id": None,
-    "boost_channel_id": None
+    "boost_channel_id": None,
+    "intro_channel_id": None,
+    "intro_message_id": None
 }
 
 user_warns = {}
@@ -78,39 +79,7 @@ def get_decorated_boost_embed(target_user):
     embed.set_image(url="https://cdn.discordapp.com/attachments/1534974589568942221/1535053258593407048/F78E6667-7B31-4736-8E4D-9337BDAF3FD0.gif?ex=6a765d40&is=6a750bc0&hm=3557e5a996b0f4584c6e00ade1d6fedd1ad9460fe27d8a0f16cea8b6a1157a36&")
     return embed
 
-@bot.event
-async def on_member_join(member):
-    channel_id = saved_channels["welcome_channel_id"]
-    channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
-    if channel:
-        await channel.send(embed=get_decorated_welcome_embed(member))
-
-@bot.event
-async def on_message(message):
-    if message.type in (discord.MessageType.premium_guild_subscription, 
-                        discord.MessageType.premium_guild_tier_1, 
-                        discord.MessageType.premium_guild_tier_2, 
-                        discord.MessageType.premium_guild_tier_3):
-        try:
-            await message.delete()
-        except (discord.Forbidden, discord.HTTPException):
-            pass
-
-        channel_id = saved_channels["boost_channel_id"]
-        channel = message.guild.get_channel(channel_id) if channel_id else message.channel
-        
-        if channel:
-            await channel.send(embed=get_decorated_boost_embed(message.author))
-
-    await bot.process_commands(message)
-
-@bot.command(name="rules")
-async def rules_command(ctx):
-    try: 
-        await ctx.message.delete()
-    except: 
-        pass
-
+def get_decorated_rules_embed():
     embed = discord.Embed(
         title="‎ ㅤ         𓈒    ✿    server rules!    𝅄          ۪   ݁   𓈒",
         description=(
@@ -136,7 +105,74 @@ async def rules_command(ctx):
         ),
         color=0x2b2d31
     )
-    await ctx.send(embed=embed)
+    return embed
+
+def get_decorated_intro_embed():
+    embed = discord.Embed(
+        title="‎ ㅤ         𓈒    ✿    introduction template    𝅄          ۪   ݁   𓈒",
+        description=(
+            "‎\n"
+            "𓈒  ✿  **name** :: \n\n"
+            "𓈒  ✿  **age / pronouns** :: \n\n"
+            "𓈒  ✿  **hobbies** :: \n\n"
+            "𓈒  ✿  **favorite thing** :: \n\n"
+            "𓈒  ✿  **extra** :: "
+        ),
+        color=0x2b2d31
+    )
+    return embed
+
+@bot.event
+async def on_member_join(member):
+    channel_id = saved_channels["welcome_channel_id"]
+    channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
+    if channel:
+        await channel.send(embed=get_decorated_welcome_embed(member))
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    if message.type in (discord.MessageType.premium_guild_subscription, 
+                        discord.MessageType.premium_guild_tier_1, 
+                        discord.MessageType.premium_guild_tier_2, 
+                        discord.MessageType.premium_guild_tier_3):
+        try:
+            await message.delete()
+        except (discord.Forbidden, discord.HTTPException):
+            pass
+
+        channel_id = saved_channels["boost_channel_id"]
+        channel = message.guild.get_channel(channel_id) if channel_id else message.channel
+        
+        if channel:
+            await channel.send(embed=get_decorated_boost_embed(message.author))
+
+    if saved_channels["intro_channel_id"] and message.channel.id == saved_channels["intro_channel_id"]:
+        try:
+            old_msg_id = saved_channels["intro_message_id"]
+            if old_msg_id:
+                try:
+                    old_msg = await message.channel.fetch_message(old_msg_id)
+                    await old_msg.delete()
+                except:
+                    pass
+            
+            new_msg = await message.channel.send(embed=get_decorated_intro_embed())
+            saved_channels["intro_message_id"] = new_msg.id
+        except:
+            pass
+
+    await bot.process_commands(message)
+
+@bot.command(name="rules")
+async def rules_command(ctx):
+    try: 
+        await ctx.message.delete()
+    except: 
+        pass
+    await ctx.send(embed=get_decorated_rules_embed())
 
 @bot.command(name="verify")
 async def verify_prefix_command(ctx):
@@ -158,6 +194,25 @@ async def boost_setup_command(ctx):
     except: pass
     saved_channels["boost_channel_id"] = ctx.channel.id
     await ctx.send(embed=get_decorated_boost_embed(ctx.author))
+
+@bot.command(name="intro")
+async def intro_setup_command(ctx):
+    try: 
+        await ctx.message.delete()
+    except: 
+        pass
+    
+    saved_channels["intro_channel_id"] = ctx.channel.id
+    
+    if saved_channels["intro_message_id"]:
+        try:
+            old_msg = await ctx.channel.fetch_message(saved_channels["intro_message_id"])
+            await old_msg.delete()
+        except:
+            pass
+
+    msg = await ctx.send(embed=get_decorated_intro_embed())
+    saved_channels["intro_message_id"] = msg.id
 
 @bot.command(name="gif")
 async def gif_command(ctx):
@@ -203,7 +258,7 @@ async def gif_command(ctx):
     if file_url.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".mov", ".webm")):
         await ctx.send(f"converted to gif:\n{file_url}")
     else:
-        await ctx.send("found the file, here is the link:\n{file_url}")
+        await ctx.send(f"found the file, here is the link:\n{file_url}")
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
