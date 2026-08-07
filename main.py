@@ -329,12 +329,13 @@ async def lock_channel(ctx):
     await ctx.send("channel has been locked for that role.", delete_after=5)
 
 @bot.tree.command(name="status", description="change the bot's online status")
-@app_commands.describe(type="online, idle, dnd, or invisible")
+@app_commands.describe(type="online, idle, dnd, invisible, or streaming")
 @app_commands.choices(type=[
     app_commands.Choice(name="online", value="online"),
     app_commands.Choice(name="idle", value="idle"),
     app_commands.Choice(name="dnd", value="dnd"),
-    app_commands.Choice(name="invisible", value="invisible")
+    app_commands.Choice(name="invisible", value="invisible"),
+    app_commands.Choice(name="streaming", value="streaming")
 ])
 async def status(interaction: discord.Interaction, type: str):
     if not interaction.user.guild_permissions.administrator:
@@ -345,10 +346,17 @@ async def status(interaction: discord.Interaction, type: str):
         "online": discord.Status.online,
         "idle": discord.Status.idle,
         "dnd": discord.Status.dnd,
-        "invisible": discord.Status.invisible
+        "invisible": discord.Status.invisible,
+        "streaming": discord.Status.online
     }
 
-    await bot.change_presence(status=status_types.get(type, discord.Status.online))
+    if type == "streaming":
+        total_members = sum(guild.member_count for guild in bot.guilds)
+        activity = discord.Streaming(name=f"{total_members} members", url="https://www.twitch.tv/discord")
+        await bot.change_presence(status=discord.Status.online, activity=activity)
+    else:
+        await bot.change_presence(status=status_types.get(type, discord.Status.online))
+
     await interaction.response.send_message(f"successfully changed bot status to **{type}**.", ephemeral=True)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
