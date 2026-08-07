@@ -286,10 +286,17 @@ async def lock_channel(ctx):
     except:
         pass
     
-    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+    role_id = 1534626110309011646
+    role = ctx.guild.get_role(role_id)
+    
+    if role is None:
+        await ctx.send("lock role not found on this server.", delete_after=5)
+        return
+
+    overwrite = ctx.channel.overwrites_for(role)
     overwrite.send_messages = False
-    await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
-    await ctx.send("channel has been locked.", delete_after=5)
+    await ctx.channel.set_permissions(role, overwrite=overwrite)
+    await ctx.send("channel has been locked for that role.", delete_after=5)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
