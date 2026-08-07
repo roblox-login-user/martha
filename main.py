@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
+import io
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -157,6 +158,52 @@ async def boost_setup_command(ctx):
     except: pass
     saved_channels["boost_channel_id"] = ctx.channel.id
     await ctx.send(embed=get_decorated_boost_embed(ctx.author))
+
+@bot.command(name="gif")
+async def gif_command(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    target_message = None
+
+    if ctx.message.reference and ctx.message.reference.message_id:
+        try:
+            target_message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+        except:
+            pass
+
+    if not target_message:
+        async for msg in ctx.channel.history(limit=10):
+            if msg.id != ctx.message.id and (msg.attachments or msg.embeds):
+                target_message = msg
+                break
+
+    if not target_message:
+        await ctx.send("no recent photo or video found to turn into a gif.", delete_after=5)
+        return
+
+    file_url = None
+    if target_message.attachments:
+        file_url = target_message.attachments[0].url
+    elif target_message.embeds:
+        for embed in target_message.embeds:
+            if embed.image and embed.image.url:
+                file_url = embed.image.url
+                break
+            elif embed.thumbnail and embed.thumbnail.url:
+                file_url = embed.thumbnail.url
+                break
+
+    if not file_url:
+        await ctx.send("the target message does not contain a valid file.", delete_after=5)
+        return
+
+    if file_url.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".mov", ".webm")):
+        await ctx.send(f"converted to gif:\n{file_url}")
+    else:
+        await ctx.send("found the file, here is the link:\n{file_url}")
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
