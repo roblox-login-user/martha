@@ -299,28 +299,28 @@ async def lock_channel(ctx):
     await ctx.channel.set_permissions(role, overwrite=overwrite)
     await ctx.send("channel has been locked for that role.", delete_after=5)
 
-@bot.tree.command(name="status", description="change the bot's presence status")
-@app_commands.describe(text="the status message", type="the type of activity")
+@bot.tree.command(name="status", description="change the bot's online status")
+@app_commands.describe(type="online, idle, dnd, or invisible")
 @app_commands.choices(type=[
-    app_commands.Choice(name="playing", value="playing"),
-    app_commands.Choice(name="streaming", value="streaming"),
-    app_commands.Choice(name="listening", value="listening")
+    app_commands.Choice(name="online", value="online"),
+    app_commands.Choice(name="idle", value="idle"),
+    app_commands.Choice(name="dnd", value="dnd"),
+    app_commands.Choice(name="invisible", value="invisible")
 ])
-async def status(interaction: discord.Interaction, text: str, type: str = "playing"):
+async def status(interaction: discord.Interaction, type: str):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("you do not have permission to use this command.", ephemeral=True)
         return
 
-    activity_types = {
-        "playing": discord.ActivityType.playing,
-        "streaming": discord.ActivityType.streaming,
-        "listening": discord.ActivityType.listening
+    status_types = {
+        "online": discord.Status.online,
+        "idle": discord.Status.idle,
+        "dnd": discord.Status.dnd,
+        "invisible": discord.Status.invisible
     }
 
-    activity = discord.Activity(type=activity_types.get(type, discord.ActivityType.playing), name=text)
-    
-    await bot.change_presence(activity=activity)
-    await interaction.response.send_message(f"successfully updated bot status to **{type} {text}**.", ephemeral=True)
+    await bot.change_presence(status=status_types.get(type, discord.Status.online))
+    await interaction.response.send_message(f"successfully changed bot status to **{type}**.", ephemeral=True)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
