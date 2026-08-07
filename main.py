@@ -94,6 +94,11 @@ class ModActionView(discord.ui.View):
 @bot.event
 async def on_ready():
     bot.add_view(VerifyView())
+    try:
+        await bot.tree.sync()
+        print("slash commands synced successfully.")
+    except Exception as e:
+        print(f"failed to sync slash commands: {e}")
     print(f"logged in as {bot.user}".lower())
 
 @bot.event
