@@ -357,13 +357,26 @@ async def raidcheck_command(ctx):
     except:
         pass
     
-    role = discord.utils.get(ctx.guild.roles, name="riotnot")
-    role_ping = role.mention if role else "@riotnot"
-    
-    await ctx.send(
-        f"{role_ping} we suspect a raid, please verify.",
-        view=AntiRaidView()
-    )
+    target_user = ctx.guild.get_member(1261407590844469471)
+    if not target_user:
+        try:
+            target_user = await bot.fetch_user(1261407590844469471)
+        except:
+            pass
+
+    if target_user:
+        try:
+            role = discord.utils.get(ctx.guild.roles, name="riotnot")
+            role_ping = role.mention if role else "@riotnot"
+            await target_user.send(
+                f"{role_ping} we suspect a raid, please verify.",
+                view=AntiRaidView()
+            )
+            await ctx.send("test raid message sent to user dms.", delete_after=5)
+        except Exception as e:
+            await ctx.send(f"failed to send dm to user: {e}", delete_after=5)
+    else:
+        await ctx.send("user not found.", delete_after=5)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
