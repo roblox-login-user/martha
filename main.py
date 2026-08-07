@@ -53,12 +53,6 @@ class VerifyView(discord.ui.View):
 @bot.event
 async def on_ready():
     bot.add_view(VerifyView())
-    try:
-        for guild in bot.guilds:
-            await guild.chunk(cache=True)
-        await bot.tree.sync()
-    except Exception as e:
-        print(e)
     print(f"logged in as {bot.user}".lower())
 
 @bot.event
@@ -169,13 +163,17 @@ async def sync_command(ctx):
     msg = await ctx.send("syncing command tree...")
 
     try:
-        for guild in bot.guilds:
-            await guild.chunk(cache=True)
         await bot.tree.sync()
     except Exception as e:
         print(e)
 
-    await msg.edit(content="checking server configuration and live channels...")
+    await msg.edit(content="chunking members and checking live channels...")
+
+    try:
+        for guild in bot.guilds:
+            await guild.chunk(cache=True)
+    except Exception as e:
+        print(e)
 
     verify_id = saved_channels["verify_channel_id"]
     welcome_id = saved_channels["welcome_channel_id"]
