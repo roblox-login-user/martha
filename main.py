@@ -19,6 +19,18 @@ saved_channels = {
 
 user_warns = {}
 
+intro_copy_text = (
+    "```text\n"
+    "‎ ㅤ         𓈒    ✿    introduction template    𝅄          ۪   ݁   𓈒\n"
+    "‎\n"
+    "𓈒  ✿  **name** :: \n\n"
+    "𓈒  ✿  **age / pronouns** :: \n\n"
+    "𓈒  ✿  **hobbies** :: \n\n"
+    "𓈒  ✿  **favorite thing** :: \n\n"
+    "𓈒  ✿  **extra** :: \n"
+    "```"
+)
+
 class VerifyView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -110,17 +122,7 @@ def get_decorated_rules_embed():
 def get_decorated_intro_embed():
     embed = discord.Embed(
         title="‎ ㅤ         𓈒    ✿    introduction template    𝅄          ۪   ݁   𓈒",
-        description=(
-            "```text\n"
-            "‎ ㅤ         𓈒    ✿    introduction template    𝅄          ۪   ݁   𓈒\n"
-            "‎\n"
-            "𓈒  ✿  **name** :: \n\n"
-            "𓈒  ✿  **age / pronouns** :: \n\n"
-            "𓈒  ✿  **hobbies** :: \n\n"
-            "𓈒  ✿  **favorite thing** :: \n\n"
-            "𓈒  ✿  **extra** :: \n"
-            "```"
-        ),
+        description="use the copy button on the text above to easily copy the template on mobile!",
         color=0x2b2d31
     )
     return embed
@@ -162,7 +164,7 @@ async def on_message(message):
                 except:
                     pass
             
-            new_msg = await message.channel.send(embed=get_decorated_intro_embed())
+            new_msg = await message.channel.send(content=intro_copy_text, embed=get_decorated_intro_embed())
             saved_channels["intro_message_id"] = new_msg.id
         except:
             pass
@@ -214,7 +216,7 @@ async def intro_setup_command(ctx):
         except:
             pass
 
-    msg = await ctx.send(embed=get_decorated_intro_embed())
+    msg = await ctx.send(content=intro_copy_text, embed=get_decorated_intro_embed())
     saved_channels["intro_message_id"] = msg.id
 
 @bot.command(name="gif")
