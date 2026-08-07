@@ -1,6 +1,6 @@
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 import os
 
 intents = discord.Intents.default()
@@ -50,21 +50,6 @@ class VerifyView(discord.ui.View):
             await interaction.user.add_roles(role)
             await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
 
-async def update_status_member_count():
-    total_members = sum(guild.member_count for guild in bot.guilds)
-    current_activity = bot.activity
-    
-    if isinstance(current_activity, discord.Streaming):
-        activity = discord.Streaming(name=f"{total_members} members", url=current_activity.url)
-    else:
-        activity = discord.Streaming(name=f"{total_members} members", url="https://www.twitch.tv/discord")
-        
-    await bot.change_presence(activity=activity)
-
-@tasks.loop(minutes=5)
-async def member_count_loop():
-    await update_status_member_count()
-
 @bot.event
 async def on_ready():
     bot.add_view(VerifyView())
@@ -72,23 +57,14 @@ async def on_ready():
         await bot.tree.sync()
     except Exception as e:
         print(e)
-    if not member_count_loop.is_running():
-        member_count_loop.start()
-    await update_status_member_count()
     print(f"logged in as {bot.user}".lower())
 
 @bot.event
 async def on_member_join(member):
-    await update_status_member_count()
-
     channel_id = saved_channels["welcome_channel_id"]
     channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
     if channel:
         await channel.send(embed=get_decorated_welcome_embed(member))
-
-@bot.event
-async def on_member_remove(member):
-    await update_status_member_count()
 
 def get_decorated_verify_embed():
     embed = discord.Embed(
@@ -190,8 +166,6 @@ async def sync_command(ctx):
     
     for guild in bot.guilds:
         await guild.chunk(cache=True)
-    
-    await update_status_member_count()
     
     try:
         await bot.tree.sync()
@@ -356,21 +330,33 @@ async def status(interaction: discord.Interaction, type: str):
         "streaming": discord.Status.online
     }
 
-    total_members = sum(guild.member_count for guild in bot.guilds)
-
     if type == "streaming":
-        activity = discord.Streaming(name=f"{total_members} members", url="https://www.twitch.tv/discord")
+        activity = discord.Streaming(name="custom stream", url="https://www.twitch.tv/discord")
         await bot.change_presence(status=discord.Status.online, activity=activity)
     else:
-        current_activity = bot.activity
-        if isinstance(current_activity, discord.Streaming):
-            activity = discord.Streaming(name=f"{total_members} members", url=current_activity.url)
-        else:
-            activity = discord.Streaming(name=f"{total_members} members", url="https://www.twitch.tv/discord")
-        
-        await bot.change_presence(status=status_types.get(type, discord.Status.online), activity=activity)
+        await bot.change_presence(status=status_types.get(type, discord.Status.online), activity=None)
 
     await interaction.response.send_message(f"successfully changed bot status to **{type}**.", ephemeral=True)
+
+@bot.tree.command(name="membercount", description="show the total members and bots in the server")
+async def membercount(interaction: discord.Interaction):
+    guild = interaction.guild
+    await guild.chunk(cache=True)
+    
+    total_members = guild.member_count
+    humans = sum(not m.bot for m in guild.members)
+    bots = sum(m.bot for m in guild.members)
+
+    embed = discord.Embed(
+        title="‎ ㅤ         𓈒    ✿    member count    𝅄          ۪   ݁   𓈒",
+        description=(
+            f"𓈒  ✿  **total members** :: {total_members}\n"
+            f"𓈒  ✿  **humans** :: {humans}\n"
+            f"𓈒  ✿  **bots** :: {bots}"
+        ),
+        color=0x2b2d31
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
