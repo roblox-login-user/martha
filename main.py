@@ -2,7 +2,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
-from datetime import datetime, timedelta
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -12,16 +11,12 @@ bot = commands.Bot(command_prefix=",", intents=intents)
 
 saved_channels = {
     "verify_channel_id": None,
-    "welcome_channel_id": None,
-    "boost_channel_id": None,
+    "welcome_channel_id": 1534367256665002044,
+    "boost_channel_id": 1534425300098875613,
     "intro_channel_id": None
 }
 
 user_warns = {}
-
-# anti-raid tracking
-recent_joins = []
-antiraid_enabled = True
 
 intro_copy_text = (
     "```text\n"
@@ -54,31 +49,9 @@ class VerifyView(discord.ui.View):
             await interaction.user.add_roles(role)
             await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
 
-class AntiRaidView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="verify", style=discord.ButtonStyle.green, custom_id="antiraid_yes")
-    async def confirm_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("raid confirmed. taking action.", ephemeral=True)
-        try:
-            await interaction.guild.edit(verification_level=discord.VerificationLevel.highest)
-            await interaction.message.edit(content="🚨 **anti-raid confirmed!** server verification level has been set to highest.", view=None)
-        except Exception as e:
-            print(e)
-
-    @discord.ui.button(label="false alarm", style=discord.ButtonStyle.red, custom_id="antiraid_no")
-    async def deny_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("marked as false alarm.", ephemeral=True)
-        try:
-            await interaction.message.edit(content="✅ **anti-raid dismissed.** marked as a false alarm.", view=None)
-        except Exception as e:
-            print(e)
-
 @bot.event
 async def on_ready():
     bot.add_view(VerifyView())
-    bot.add_view(AntiRaidView())
     try:
         await bot.tree.sync()
     except Exception as e:
@@ -155,33 +128,6 @@ def get_decorated_intro_embed():
 
 @bot.event
 async def on_member_join(member):
-    global antiraid_enabled, recent_joins
-    
-    if antiraid_enabled:
-        now = datetime.utcnow()
-        recent_joins.append(now)
-        
-        # clean joins older than 10 seconds
-        recent_joins = [t for t in recent_joins if now - t < timedelta(seconds=10)]
-        
-        # if more than 5 joins happen within 10 seconds, trigger anti-raid notification
-        if len(recent_joins) >= 5:
-            try:
-                role = discord.utils.get(member.guild.roles, name="riotnot")
-                role_ping = role.mention if role else "@riotnot"
-                
-                for channel in member.guild.text_channels:
-                    if channel.permissions_for(member.guild.me).send_messages:
-                        await channel.send(
-                            f"{role_ping} we suspect a raid, please verify.",
-                            view=AntiRaidView()
-                        )
-                        break
-                # clear list so it doesn't spam instantly again
-                recent_joins.clear()
-            except Exception as e:
-                print(e)
-
     channel_id = saved_channels["welcome_channel_id"]
     channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
     if channel:
@@ -209,6 +155,47 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
+@bot.command(name="sync")
+@commands.has_permissions(administrator=True)
+async def sync_command(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    verify_id = saved_channels["verify_channel_id"]
+    welcome_id = saved_channels["welcome_channel_id"]
+    boost_id = saved_channels["boost_channel_id"]
+    intro_id = saved_channels["intro_channel_id"]
+
+    verify_str = f"<#{verify_id}>" if verify_id else "not set"
+    welcome_str = f"<#{welcome_id}>" if welcome_id else "not set"
+    boost_str = f"<#{boost_id}>" if boost_id else "not set"
+    intro_str = f"<#{intro_id}>" if intro_id else "not set"
+
+    description = (
+        f"𓈒  ✿  **verify channel** :: {verify_str}\n"
+        f"𓈒  ✿  **welcome channel** :: {welcome_str}\n"
+        f"𓈒  ✿  **boost channel** :: {boost_str}\n"
+        f"𓈒  ✿  **intro channel** :: {intro_str}"
+    )
+
+    embed = discord.Embed(
+        title="‎ ㅤ         𓈒    ✿    linked channels    𝅄          ۪   ݁   𓈒",
+        description=description,
+        color=0x2b2d31
+    )
+    await ctx.send(embed=embed, delete_after=10)
+
+@bot.command(name="ping")
+async def ping_command(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    latency = round(bot.latency * 1000)
+    await ctx.send(f"pong! {latency}ms")
+
 @bot.command(name="rules")
 async def rules_command(ctx):
     try: 
@@ -223,20 +210,6 @@ async def verify_prefix_command(ctx):
     except: pass
     saved_channels["verify_channel_id"] = ctx.channel.id
     await ctx.send(embed=get_decorated_verify_embed(), view=VerifyView())
-
-@bot.command(name="welcome")
-async def welcome_setup_command(ctx):
-    try: await ctx.message.delete()
-    except: pass
-    saved_channels["welcome_channel_id"] = ctx.channel.id
-    await ctx.send(embed=get_decorated_welcome_embed(ctx.author))
-
-@bot.command(name="boost")
-async def boost_setup_command(ctx):
-    try: await ctx.message.delete()
-    except: pass
-    saved_channels["boost_channel_id"] = ctx.channel.id
-    await ctx.send(embed=get_decorated_boost_embed(ctx.author))
 
 @bot.command(name="intro")
 async def intro_setup_command(ctx):
@@ -326,57 +299,44 @@ async def lock_channel(ctx):
     await ctx.channel.set_permissions(role, overwrite=overwrite)
     await ctx.send("channel has been locked for that role.", delete_after=5)
 
-@bot.command(name="antiraid")
-@commands.has_permissions(administrator=True)
-async def antiraid_toggle(ctx, status: str = None):
-    global antiraid_enabled
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    if status is None:
-        state = "enabled" if antiraid_enabled else "disabled"
-        await ctx.send(f"anti-raid protection is currently **{state}**.", delete_after=5)
+@bot.tree.command(name="status", description="change the bot's presence status")
+@app_commands.describe(text="the status message", type="the type of activity", status="the online status")
+@app_commands.choices(type=[
+    app_commands.Choice(name="playing", value="playing"),
+    app_commands.Choice(name="streaming", value="streaming"),
+    app_commands.Choice(name="listening", value="listening"),
+    app_commands.Choice(name="watching", value="watching"),
+    app_commands.Choice(name="competing", value="competing")
+], status=[
+    app_commands.Choice(name="online", value="online"),
+    app_commands.Choice(name="idle", value="idle"),
+    app_commands.Choice(name="dnd", value="dnd"),
+    app_commands.Choice(name="invisible", value="invisible")
+])
+async def status(interaction: discord.Interaction, text: str, type: str = "playing", status: str = "online"):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("you do not have permission to use this command.", ephemeral=True)
         return
-        
-    if status.lower() == "on":
-        antiraid_enabled = True
-        await ctx.send("anti-raid protection has been **enabled**.", delete_after=5)
-    elif status.lower() == "off":
-        antiraid_enabled = False
-        await ctx.send("anti-raid protection has been **disabled**.", delete_after=5)
-    else:
-        await ctx.send("please use `,antiraid on` or `,antiraid off`.", delete_after=5)
 
-@bot.command(name="raidcheck")
-@commands.has_permissions(administrator=True)
-async def raidcheck_command(ctx):
-    try:
-        await ctx.message.delete()
-    except:
-        pass
+    activity_types = {
+        "playing": discord.ActivityType.playing,
+        "streaming": discord.ActivityType.streaming,
+        "listening": discord.ActivityType.listening,
+        "watching": discord.ActivityType.watching,
+        "competing": discord.ActivityType.competing
+    }
+
+    status_types = {
+        "online": discord.Status.online,
+        "idle": discord.Status.idle,
+        "dnd": discord.Status.dnd,
+        "invisible": discord.Status.invisible
+    }
+
+    activity = discord.Activity(type=activity_types.get(type, discord.ActivityType.playing), name=text)
     
-    target_user = ctx.guild.get_member(1261407590844469471)
-    if not target_user:
-        try:
-            target_user = await bot.fetch_user(1261407590844469471)
-        except:
-            pass
-
-    if target_user:
-        try:
-            role = discord.utils.get(ctx.guild.roles, name="riotnot")
-            role_ping = role.mention if role else "@riotnot"
-            await target_user.send(
-                f"{role_ping} we suspect a raid, please verify.",
-                view=AntiRaidView()
-            )
-            await ctx.send("test raid message sent to user dms.", delete_after=5)
-        except Exception as e:
-            await ctx.send(f"failed to send dm to user: {e}", delete_after=5)
-    else:
-        await ctx.send("user not found.", delete_after=5)
+    await bot.change_presence(activity=activity, status=status_types.get(status, discord.Status.online))
+    await interaction.response.send_message(f"successfully updated bot status to **{type} {text}** ({status}).", ephemeral=True)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
