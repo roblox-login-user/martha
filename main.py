@@ -1,6 +1,6 @@
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 import os
 
 intents = discord.Intents.default()
@@ -49,6 +49,12 @@ class VerifyView(discord.ui.View):
             await interaction.user.add_roles(role)
             await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
 
+@tasks.loop(minutes=5)
+async def update_member_count_status():
+    total_members = sum(guild.member_count for guild in bot.guilds)
+    activity = discord.Activity(type=discord.ActivityType.playing, name=f"{total_members} members")
+    await bot.change_presence(activity=activity)
+
 @bot.event
 async def on_ready():
     bot.add_view(VerifyView())
@@ -56,7 +62,24 @@ async def on_ready():
         await bot.tree.sync()
     except Exception as e:
         print(e)
+    if not update_member_count_status.is_running():
+        update_member_count_status.start()
     print(f"logged in as {bot.user}".lower())
+
+@bot.event
+async def on_member_join(member):
+    total_members = sum(guild.member_count for guild in bot.guilds)
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"{total_members} members"))
+
+    channel_id = saved_channels["welcome_channel_id"]
+    channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
+    if channel:
+        await channel.send(embed=get_decorated_welcome_embed(member))
+
+@bot.event
+async def on_member_remove(member):
+    total_members = sum(guild.member_count for guild in bot.guilds)
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"{total_members} members"))
 
 def get_decorated_verify_embed():
     embed = discord.Embed(
@@ -125,13 +148,6 @@ def get_decorated_intro_embed():
         color=0x2b2d31
     )
     return embed
-
-@bot.event
-async def on_member_join(member):
-    channel_id = saved_channels["welcome_channel_id"]
-    channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
-    if channel:
-        await channel.send(embed=get_decorated_welcome_embed(member))
 
 @bot.event
 async def on_message(message):
