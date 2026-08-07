@@ -14,10 +14,16 @@ saved_channels = {
     "verify_channel_id": None,
     "welcome_channel_id": 1534367256665002044,
     "boost_channel_id": 1534425300098875613,
-    "intro_channel_id": None
+    "intro_channel_id": None,
+    "mod_log_channel_id": 1534974589568942221
 }
 
 user_warns = {}
+
+blacklisted_words = [
+    "chink", "nigger", "nigga", "tranny", "faggot", "retard",
+    "fag", "coon", "spic", "kike", "retarded", "dyke", "gook", "wetback"
+]
 
 intro_copy_text = (
     "```text\n"
@@ -49,6 +55,41 @@ class VerifyView(discord.ui.View):
         else:
             await interaction.user.add_roles(role)
             await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
+
+class ModActionView(discord.ui.View):
+    def __init__(self, target_user_id: int):
+        super().__init__(timeout=None)
+        self.target_user_id = target_user_id
+
+    @discord.ui.button(label="warn user", style=discord.ButtonStyle.red, custom_id="mod_warn_button")
+    async def warn_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.moderate_members:
+            await interaction.response.send_message("you do not have permission to use this button.", ephemeral=True)
+            return
+        
+        guild = interaction.guild
+        target_user = guild.get_member(self.target_user_id)
+        
+        uid = self.target_user_id
+        user_warns[uid] = user_warns.get(uid, 0) + 1
+        count = user_warns[uid]
+
+        if target_user:
+            try:
+                await target_user.send(f"you have been warned in **{guild.name}**.\nreason: hate speech / slurs\nwarn count: {count}/3")
+            except:
+                pass
+
+        if count >= 3 and target_user:
+            try:
+                await target_user.kick(reason="reached 3 warnings via automod alert")
+                user_warns[uid] = 0
+                await interaction.response.send_message(f"successfully warned <@{self.target_user_id}> ({count}/3). they reached 3 warnings and were automatically kicked.", ephemeral=True)
+                return
+            except:
+                pass
+
+        await interaction.response.send_message(f"successfully warned <@{self.target_user_id}>. current warnings: {count}/3.", ephemeral=True)
 
 @bot.event
 async def on_ready():
@@ -130,9 +171,43 @@ def get_decorated_intro_embed():
     )
     return embed
 
+def get_decorated_automod_embed(target_user, offending_message):
+    embed = discord.Embed(
+        title="‎ ㅤ         𓈒    ✿    automod alert :: slur detected    𝅄          ۪   ݁   𓈒",
+        description=(
+            f"‎\n"
+            f"𓈒  ✿  **offending user** :: {target_user.mention} (`{target_user.id}`)\n"
+            f"𓈒  ✿  **channel** :: {offending_message.channel.mention}\n\n"
+            f"𓈒  ✿  **message content** ::\n"
+            f"> {offending_message.content}\n\n"
+            f"‎ ㅤ ۪ 𝅄 should we warn this user for saying this?"
+        ),
+        color=0x2b2d31
+    )
+    embed.set_footer(text="automod protection system active")
+    return embed
+
 @bot.event
 async def on_message(message):
     if message.author.bot:
+        return
+
+    content_lower = message.content.lower()
+    if any(word in content_lower for word in blacklisted_words):
+        try:
+            await message.delete()
+        except:
+            pass
+
+        log_channel_id = saved_channels["mod_log_channel_id"]
+        log_channel = message.guild.get_channel(log_channel_id) if log_channel_id else None
+
+        if log_channel:
+            view = ModActionView(message.author.id)
+            await log_channel.send(
+                embed=get_decorated_automod_embed(message.author, message),
+                view=view
+            )
         return
 
     if message.type in (discord.MessageType.premium_guild_subscription, 
@@ -151,69 +226,6 @@ async def on_message(message):
             await channel.send(embed=get_decorated_boost_embed(message.author))
 
     await bot.process_commands(message)
-
-@bot.command(name="sync")
-@commands.has_permissions(administrator=True)
-async def sync_command(ctx):
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-
-    msg = await ctx.send("syncing command tree...")
-
-    try:
-        await bot.tree.sync()
-    except Exception as e:
-        print(e)
-
-    await msg.edit(content="chunking members and checking live channels...")
-
-    try:
-        for guild in bot.guilds:
-            await guild.chunk(cache=True)
-    except Exception as e:
-        print(e)
-
-    verify_id = saved_channels["verify_channel_id"]
-    welcome_id = saved_channels["welcome_channel_id"]
-    boost_id = saved_channels["boost_channel_id"]
-    intro_id = saved_channels["intro_channel_id"]
-
-    verify_channel = ctx.guild.get_channel(verify_id) if verify_id else None
-    welcome_channel = ctx.guild.get_channel(welcome_id) if welcome_id else None
-    boost_channel = ctx.guild.get_channel(boost_id) if boost_id else None
-    intro_channel = ctx.guild.get_channel(intro_id) if intro_id else None
-
-    verify_str = f"<#{verify_id}> [✓]" if verify_channel else "not set [❌]"
-    welcome_str = f"<#{welcome_id}> [✓] (welcomes new members)" if welcome_channel else "not set [❌]"
-    boost_str = f"<#{boost_id}> [✓] (welcomes server boosters)" if boost_channel else "not set [❌]"
-    intro_str = f"<#{intro_id}> [✓]" if intro_channel else "not set [❌]"
-
-    description = (
-        f"𓈒  ✿  **verify channel** :: {verify_str}\n"
-        f"𓈒  ✿  **welcome channel** :: {welcome_str}\n"
-        f"𓈒  ✿  **boost channel** :: {boost_str}\n"
-        f"𓈒  ✿  **intro channel** :: {intro_str}\n\n"
-        f"𓈒  ✿  **active features understood** ::\n"
-        f"   • auto delete & custom welcome embed for new members\n"
-        f"   • auto delete & custom boost embed for server boosters\n"
-        f"   • verify button view handler\n"
-        f"   • rules, ping, gif, lock, c, intro commands\n"
-        f"   • slash commands: status, membercount, echo, ban, warn"
-    )
-
-    embed = discord.Embed(
-        title="‎ ㅤ         𓈒    ✿    synced & understood status    𝅄          ۪   ݁   𓈒",
-        description=description,
-        color=0x2b2d31
-    )
-    await msg.edit(content=None, embed=embed)
-    await discord.utils.sleep_until(discord.utils.utcnow() + discord.timedelta(seconds=12))
-    try:
-        await msg.delete()
-    except:
-        pass
 
 @bot.command(name="ping")
 async def ping_command(ctx):
