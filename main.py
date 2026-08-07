@@ -165,7 +165,9 @@ async def sync_command(ctx):
         await ctx.message.delete()
     except:
         pass
-    
+
+    msg = await ctx.send("syncing and checking channels...")
+
     for guild in bot.guilds:
         await guild.chunk(cache=True)
     
@@ -179,10 +181,15 @@ async def sync_command(ctx):
     boost_id = saved_channels["boost_channel_id"]
     intro_id = saved_channels["intro_channel_id"]
 
-    verify_str = f"<#{verify_id}>" if verify_id else "not set"
-    welcome_str = f"<#{welcome_id}>" if welcome_id else "not set"
-    boost_str = f"<#{boost_id}>" if boost_id else "not set"
-    intro_str = f"<#{intro_id}>" if intro_id else "not set"
+    verify_channel = ctx.guild.get_channel(verify_id) if verify_id else None
+    welcome_channel = ctx.guild.get_channel(welcome_id) if welcome_id else None
+    boost_channel = ctx.guild.get_channel(boost_id) if boost_id else None
+    intro_channel = ctx.guild.get_channel(intro_id) if intro_id else None
+
+    verify_str = f"<#{verify_id}> [✓]" if verify_channel else "not set [❌]"
+    welcome_str = f"<#{welcome_id}> [✓]" if welcome_channel else "not set [❌]"
+    boost_str = f"<#{boost_id}> [✓]" if boost_channel else "not set [❌]"
+    intro_str = f"<#{intro_id}> [✓]" if intro_channel else "not set [❌]"
 
     description = (
         f"𓈒  ✿  **verify channel** :: {verify_str}\n"
@@ -196,7 +203,12 @@ async def sync_command(ctx):
         description=description,
         color=0x2b2d31
     )
-    await ctx.send(embed=embed, delete_after=10)
+    await msg.edit(content=None, embed=embed)
+    await discord.utils.sleep_until(discord.utils.utcnow() + discord.timedelta(seconds=10))
+    try:
+        await msg.delete()
+    except:
+        pass
 
 @bot.command(name="ping")
 async def ping_command(ctx):
