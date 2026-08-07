@@ -54,6 +54,8 @@ class VerifyView(discord.ui.View):
 async def on_ready():
     bot.add_view(VerifyView())
     try:
+        for guild in bot.guilds:
+            await guild.chunk(cache=True)
         await bot.tree.sync()
     except Exception as e:
         print(e)
@@ -266,7 +268,7 @@ async def gif_command(ctx):
                 file_url = embed.thumbnail.url
                 break
 
-    if not file_url:
+Na    if not file_url:
         await ctx.send("the target message does not contain a valid file.", delete_after=5)
         return
 
@@ -340,6 +342,8 @@ async def status(interaction: discord.Interaction, type: str):
 
 @bot.tree.command(name="membercount", description="show the total members and bots in the server")
 async def membercount(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    
     guild = interaction.guild
     await guild.chunk(cache=True)
     
@@ -356,7 +360,7 @@ async def membercount(interaction: discord.Interaction):
         ),
         color=0x2b2d31
     )
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
@@ -371,7 +375,7 @@ async def ban(interaction: discord.Interaction, user: discord.Member, time: str 
     if not interaction.user.guild_permissions.ban_members:
         await interaction.response.send_message("you do not have permission to use this command.", ephemeral=True)
         return
-    ban_reason = f"banned by {interaction.user}"
+    ban_reason = f"banned by the staff team"
     if time:
         ban_reason += f" | duration: {time}"
     if reason:
