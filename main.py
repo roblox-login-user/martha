@@ -111,12 +111,15 @@ def get_decorated_intro_embed():
     embed = discord.Embed(
         title="‎ ㅤ         𓈒    ✿    introduction template    𝅄          ۪   ݁   𓈒",
         description=(
+            "```text\n"
+            "‎ ㅤ         𓈒    ✿    introduction template    𝅄          ۪   ݁   𓈒\n"
             "‎\n"
             "𓈒  ✿  **name** :: \n\n"
             "𓈒  ✿  **age / pronouns** :: \n\n"
             "𓈒  ✿  **hobbies** :: \n\n"
             "𓈒  ✿  **favorite thing** :: \n\n"
-            "𓈒  ✿  **extra** :: "
+            "𓈒  ✿  **extra** :: \n"
+            "```"
         ),
         color=0x2b2d31
     )
@@ -259,6 +262,32 @@ async def gif_command(ctx):
         await ctx.send(f"converted to gif:\n{file_url}")
     else:
         await ctx.send(f"found the file, here is the link:\n{file_url}")
+
+@bot.command(name="c")
+@commands.has_permissions(manage_messages=True)
+async def clear_messages(ctx, amount: int = None):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if amount is None:
+        await ctx.channel.purge(limit=None)
+    else:
+        await ctx.channel.purge(limit=amount)
+
+@bot.command(name="lock")
+@commands.has_permissions(manage_channels=True)
+async def lock_channel(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+    overwrite.send_messages = False
+    await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+    await ctx.send("channel has been locked.", delete_after=5)
 
 @bot.tree.command(name="echo", description="echo a message to a channel")
 @app_commands.describe(message="the message to echo", channel="the channel to send it in")
