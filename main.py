@@ -166,16 +166,17 @@ async def sync_command(ctx):
     except:
         pass
 
-    msg = await ctx.send("syncing and checking channels...")
+    msg = await ctx.send("syncing command tree...")
 
-    for guild in bot.guilds:
-        await guild.chunk(cache=True)
-    
     try:
+        for guild in bot.guilds:
+            await guild.chunk(cache=True)
         await bot.tree.sync()
     except Exception as e:
         print(e)
-    
+
+    await msg.edit(content="checking server configuration and live channels...")
+
     verify_id = saved_channels["verify_channel_id"]
     welcome_id = saved_channels["welcome_channel_id"]
     boost_id = saved_channels["boost_channel_id"]
@@ -187,24 +188,30 @@ async def sync_command(ctx):
     intro_channel = ctx.guild.get_channel(intro_id) if intro_id else None
 
     verify_str = f"<#{verify_id}> [✓]" if verify_channel else "not set [❌]"
-    welcome_str = f"<#{welcome_id}> [✓]" if welcome_channel else "not set [❌]"
-    boost_str = f"<#{boost_id}> [✓]" if boost_channel else "not set [❌]"
+    welcome_str = f"<#{welcome_id}> [✓] (welcomes new members)" if welcome_channel else "not set [❌]"
+    boost_str = f"<#{boost_id}> [✓] (welcomes server boosters)" if boost_channel else "not set [❌]"
     intro_str = f"<#{intro_id}> [✓]" if intro_channel else "not set [❌]"
 
     description = (
         f"𓈒  ✿  **verify channel** :: {verify_str}\n"
         f"𓈒  ✿  **welcome channel** :: {welcome_str}\n"
         f"𓈒  ✿  **boost channel** :: {boost_str}\n"
-        f"𓈒  ✿  **intro channel** :: {intro_str}"
+        f"𓈒  ✿  **intro channel** :: {intro_str}\n\n"
+        f"𓈒  ✿  **active features understood** ::\n"
+        f"   • auto delete & custom welcome embed for new members\n"
+        f"   • auto delete & custom boost embed for server boosters\n"
+        f"   • verify button view handler\n"
+        f"   • rules, ping, gif, lock, c, intro commands\n"
+        f"   • slash commands: status, membercount, echo, ban, warn"
     )
 
     embed = discord.Embed(
-        title="‎ ㅤ         𓈒    ✿    linked channels    𝅄          ۪   ݁   𓈒",
+        title="‎ ㅤ         𓈒    ✿    synced & understood status    𝅄          ۪   ݁   𓈒",
         description=description,
         color=0x2b2d31
     )
     await msg.edit(content=None, embed=embed)
-    await discord.utils.sleep_until(discord.utils.utcnow() + discord.timedelta(seconds=10))
+    await discord.utils.sleep_until(discord.utils.utcnow() + discord.timedelta(seconds=12))
     try:
         await msg.delete()
     except:
