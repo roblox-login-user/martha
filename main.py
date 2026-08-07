@@ -13,8 +13,7 @@ saved_channels = {
     "verify_channel_id": None,
     "welcome_channel_id": None,
     "boost_channel_id": None,
-    "intro_channel_id": None,
-    "intro_message_id": None
+    "intro_channel_id": None
 }
 
 user_warns = {}
@@ -154,21 +153,6 @@ async def on_message(message):
         if channel:
             await channel.send(embed=get_decorated_boost_embed(message.author))
 
-    if saved_channels["intro_channel_id"] and message.channel.id == saved_channels["intro_channel_id"]:
-        try:
-            old_msg_id = saved_channels["intro_message_id"]
-            if old_msg_id:
-                try:
-                    old_msg = await message.channel.fetch_message(old_msg_id)
-                    await old_msg.delete()
-                except:
-                    pass
-            
-            new_msg = await message.channel.send(content=intro_copy_text, embed=get_decorated_intro_embed())
-            saved_channels["intro_message_id"] = new_msg.id
-        except:
-            pass
-
     await bot.process_commands(message)
 
 @bot.command(name="rules")
@@ -207,17 +191,7 @@ async def intro_setup_command(ctx):
     except: 
         pass
     
-    saved_channels["intro_channel_id"] = ctx.channel.id
-    
-    if saved_channels["intro_message_id"]:
-        try:
-            old_msg = await ctx.channel.fetch_message(saved_channels["intro_message_id"])
-            await old_msg.delete()
-        except:
-            pass
-
-    msg = await ctx.send(content=intro_copy_text, embed=get_decorated_intro_embed())
-    saved_channels["intro_message_id"] = msg.id
+    await ctx.send(content=intro_copy_text, embed=get_decorated_intro_embed())
 
 @bot.command(name="gif")
 async def gif_command(ctx):
