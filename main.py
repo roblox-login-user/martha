@@ -443,4 +443,17 @@ async def warn(interaction: discord.Interaction, user: discord.Member, reason: s
 
     await interaction.response.send_message(f"warned {user.mention}. current warnings: {count}/3.", ephemeral=True)
 
+@bot.tree.command(name="dm", description="send a direct message to a user through the bot")
+@app_commands.describe(user="the user to direct message", text="the message to send")
+async def dm(interaction: discord.Interaction, user: discord.Member, text: str):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("you do not have permission to use this command.", ephemeral=True)
+        return
+
+    try:
+        await user.send(text)
+        await interaction.response.send_message(f"successfully sent a direct message to {user.mention}.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"failed to send direct message to {user.mention}. they might have dms closed.", ephemeral=True)
+
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
