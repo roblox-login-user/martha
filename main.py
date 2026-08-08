@@ -182,15 +182,15 @@ def get_decorated_commands_embed():
         description=(
             "‎\n"
             "𓈒  ✿  **general commands**\n"
-            "   𝅄 `,ping` or `/ping` :: check bot latency\n"
-            "   𝅄 `,rules` or `/rules` :: display server rules embed\n"
-            "   𝅄 `,verify` or `/verify` :: send verification panel button\n"
-            "   𝅄 `,intro` or `/intro` :: send introduction copy template\n"
-            "   𝅄 `,gif` or `/gif` :: convert latest file/video in chat to a gif link\n"
-            "   𝅄 `/membercount` :: show total members, humans, and bots\n\n"
+            "   𝅄 `,ping` :: check bot latency\n"
+            "   𝅄 `,rules` :: display server rules embed\n"
+            "   𝅄 `,verify` :: send verification panel button\n"
+            "   𝅄 `,intro` :: send introduction copy template\n"
+            "   𝅄 `/membercount` :: show total members, humans, and bots\n"
+            "   𝅄 `/commands` or `/cmds` or `,cmds` :: show all bot commands\n\n"
             "𓈒  ✿  **moderation commands**\n"
-            "   𝅄 `,c [amount]` or `/c` :: clear messages in channel\n"
-            "   𝅄 `,lock` or `/lock` :: lock current channel for verified role\n"
+            "   𝅄 `,c [amount]` :: clear messages in channel\n"
+            "   𝅄 `,lock` :: lock current channel for verified role\n"
             "   𝅄 `/warn [user] [reason]` :: warn a user (auto-bans at 3 warns)\n"
             "   𝅄 `/ban [user] [time] [reason]` :: ban a user from the server\n\n"
             "𓈒  ✿  **utility commands**\n"
@@ -290,41 +290,6 @@ async def intro_setup_command(ctx):
         pass
     
     await ctx.send(content=intro_copy_text, embed=get_decorated_intro_embed())
-
-@bot.command(name="gif")
-async def gif_command(ctx):
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-
-    target_message = None
-    async for msg in ctx.channel.history(limit=15):
-        if msg.id != ctx.message.id and (msg.attachments or msg.embeds):
-            target_message = msg
-            break
-
-    if not target_message:
-        await ctx.send("no recent file or video found in this channel to convert.", delete_after=5)
-        return
-
-    file_url = None
-    if target_message.attachments:
-        file_url = target_message.attachments[0].url
-    elif target_message.embeds:
-        for embed in target_message.embeds:
-            if embed.image and embed.image.url:
-                file_url = embed.image.url
-                break
-            elif embed.thumbnail and embed.thumbnail.url:
-                file_url = embed.thumbnail.url
-                break
-
-    if not file_url:
-        await ctx.send("the latest message does not contain a valid file.", delete_after=5)
-        return
-
-    await ctx.send(f"converted to gif:\n{file_url}")
 
 @bot.command(name="c")
 @commands.has_permissions(manage_messages=True)
