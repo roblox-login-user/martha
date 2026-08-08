@@ -19,6 +19,7 @@ saved_channels = {
 }
 
 user_warns = {}
+warned_messages = set()
 
 blacklisted_words = [
     "chink", "nigger", "nigga", "tranny", "faggot", "retard",
@@ -56,13 +57,13 @@ class VerifyView(discord.ui.View):
             await interaction.user.add_roles(role)
             await interaction.response.send_message("you have been verified successfully!", ephemeral=True)
 
-class ModActionView(discord.ui.View):
+class ConfirmWarnView(discord.ui.View):
     def __init__(self, target_user_id: int):
         super().__init__(timeout=None)
         self.target_user_id = target_user_id
 
-    @discord.ui.button(label="warn user", style=discord.ButtonStyle.red, custom_id="mod_warn_button")
-    async def warn_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="yes", style=discord.ButtonStyle.red, custom_id="confirm_warn_yes")
+    async def yes_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.user.guild_permissions.moderate_members:
             await interaction.response.send_message("you do not have permission to use this button.", ephemeral=True)
             return
@@ -84,11 +85,62 @@ class ModActionView(discord.ui.View):
             try:
                 await target_user.ban(reason="reached 3 warnings via automod alert")
                 user_warns[uid] = 0
+                warned_messages.add(interaction.message.id)
+                await interaction.response.edit_message(content=f"successfully warned <@{self.target_user_id}> ({count}/3). they reached 3 warnings and have been automatically banned.", view=None)
+                return
+            except:
+                pass
+
+        warned_messages.add(interaction.message.id)
+        await interaction.response.edit_message(content=f"successfully warned <@{self.target_user_id}>. current warnings: {count}/3.", view=None)
+
+    @discord.ui.button(label="no", style=discord.ButtonStyle.grey, custom_id="confirm_warn_no")
+    async def no_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.moderate_members:
+            await interaction.response.send_message("you do not have permission to use this button.", ephemeral=True)
+            return
+        await interaction.response.edit_message(content="warning cancelled.", view=None)
+
+class ModActionView(discord.ui.View):
+    def __init__(self, target_user_id: int):
+        super().__init__(timeout=None)
+        self.target_user_id = target_user_id
+
+    @discord.ui.button(label="warn user", style=discord.ButtonStyle.red, custom_id="mod_warn_button")
+    async def warn_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.moderate_members:
+            await interaction.response.send_message("you do not have permission to use this button.", ephemeral=True)
+            return
+        
+        if interaction.message.id in warned_messages:
+            view = ConfirmWarnView(self.target_user_id)
+            await interaction.response.send_message("user has already been warned do u wanna warn again?", view=view, ephemeral=True)
+            return
+
+        guild = interaction.guild
+        target_user = guild.get_member(self.target_user_id)
+        
+        uid = self.target_user_id
+        user_warns[uid] = user_warns.get(uid, 0) + 1
+        count = user_warns[uid]
+
+        if target_user:
+            try:
+                await target_user.send(f"you have been warned in **{guild.name}**.\nreason: hate speech / slurs\nwarn count: {count}/3")
+            except:
+                pass
+
+        if count >= 3 and target_user:
+            try:
+                await target_user.ban(reason="reached 3 warnings via automod alert")
+                user_warns[uid] = 0
+                warned_messages.add(interaction.message.id)
                 await interaction.response.send_message(f"successfully warned <@{self.target_user_id}> ({count}/3). they reached 3 warnings and have been automatically banned.", ephemeral=True)
                 return
             except:
                 pass
 
+        warned_messages.add(interaction.message.id)
         await interaction.response.send_message(f"successfully warned <@{self.target_user_id}>. current warnings: {count}/3.", ephemeral=True)
 
 @bot.event
