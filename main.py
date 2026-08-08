@@ -176,6 +176,32 @@ def get_decorated_intro_embed():
     )
     return embed
 
+def get_decorated_commands_embed():
+    embed = discord.Embed(
+        title="‎ ㅤ         𓈒    ✿    bot commands list    𝅄          ۪   ݁   𓈒",
+        description=(
+            "‎\n"
+            "𓈒  ✿  **general commands**\n"
+            "   𝅄 `,ping` or `/ping` :: check bot latency\n"
+            "   𝅄 `,rules` or `/rules` :: display server rules embed\n"
+            "   𝅄 `,verify` or `/verify` :: send verification panel button\n"
+            "   𝅄 `,intro` or `/intro` :: send introduction copy template\n"
+            "   𝅄 `,gif` or `/gif` :: convert latest file/video in chat to a gif link\n"
+            "   𝅄 `/membercount` :: show total members, humans, and bots\n\n"
+            "𓈒  ✿  **moderation commands**\n"
+            "   𝅄 `,c [amount]` or `/c` :: clear messages in channel\n"
+            "   𝅄 `,lock` or `/lock` :: lock current channel for verified role\n"
+            "   𝅄 `/warn [user] [reason]` :: warn a user (auto-bans at 3 warns)\n"
+            "   𝅄 `/ban [user] [time] [reason]` :: ban a user from the server\n\n"
+            "𓈒  ✿  **utility commands**\n"
+            "   𝅄 `/echo [message] [channel]` :: send an echoed message\n"
+            "   𝅄 `/dm [user] [text]` :: direct message a user through the bot\n"
+            "   𝅄 `/status [type]` :: change bot online status or stream"
+        ),
+        color=0x2b2d31
+    )
+    return embed
+
 def get_decorated_automod_embed(target_user, offending_message):
     embed = discord.Embed(
         title="‎ ㅤ         𓈒    ✿    automod alert :: slur detected    𝅄          ۪   ݁   𓈒",
@@ -273,21 +299,13 @@ async def gif_command(ctx):
         pass
 
     target_message = None
-
-    if ctx.message.reference and ctx.message.reference.message_id:
-        try:
-            target_message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
-        except:
-            pass
+    async for msg in ctx.channel.history(limit=15):
+        if msg.id != ctx.message.id and (msg.attachments or msg.embeds):
+            target_message = msg
+            break
 
     if not target_message:
-        async for msg in ctx.channel.history(limit=10):
-            if msg.id != ctx.message.id and (msg.attachments or msg.embeds):
-                target_message = msg
-                break
-
-    if not target_message:
-        await ctx.send("no recent photo or video found to turn into a gif.", delete_after=5)
+        await ctx.send("no recent file or video found in this channel to convert.", delete_after=5)
         return
 
     file_url = None
@@ -303,13 +321,10 @@ async def gif_command(ctx):
                 break
 
     if not file_url:
-        await ctx.send("the target message does not contain a valid file.", delete_after=5)
+        await ctx.send("the latest message does not contain a valid file.", delete_after=5)
         return
 
-    if file_url.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".mov", ".webm")):
-        await ctx.send(f"converted to gif:\n{file_url}")
-    else:
-        await ctx.send(f"found the file, here is the link:\n{file_url}")
+    await ctx.send(f"converted to gif:\n{file_url}")
 
 @bot.command(name="c")
 @commands.has_permissions(manage_messages=True)
@@ -343,6 +358,22 @@ async def lock_channel(ctx):
     overwrite.send_messages = False
     await ctx.channel.set_permissions(role, overwrite=overwrite)
     await ctx.send("channel has been locked for that role.", delete_after=5)
+
+@bot.command(name="cmds")
+async def cmds_prefix_command(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    await ctx.send(embed=get_decorated_commands_embed())
+
+@bot.tree.command(name="commands", description="show all bot commands")
+async def commands_slash(interaction: discord.Interaction):
+    await interaction.response.send_message(embed=get_decorated_commands_embed(), ephemeral=True)
+
+@bot.tree.command(name="cmds", description="show all bot commands")
+async def cmds_slash(interaction: discord.Interaction):
+    await interaction.response.send_message(embed=get_decorated_commands_embed(), ephemeral=True)
 
 @bot.tree.command(name="status", description="change the bot's online status")
 @app_commands.describe(type="online, idle, dnd, invisible, or streaming")
