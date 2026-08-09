@@ -1,3 +1,4 @@
+import io
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -18,6 +19,8 @@ saved_channels = {
     "mod_log_channel_id": 1534974589568942221
 }
 
+SPECIAL_USER_ID = 000000000000000000  # waiting for user/id
+
 user_warns = {}
 warned_messages = set()
 
@@ -34,9 +37,170 @@ intro_copy_text = (
     "𓈒  ✿  **age / pronouns** :: \n\n"
     "𓈒  ✿  **hobbies** :: \n\n"
     "𓈒  ✿  **favorite thing** :: \n\n"
-    "𓈒  ✿  **extra** :: \n"
+    "𓈒  ✿  **extra** :: \n\n"
     "```"
 )
+
+class StickerSetupModal(discord.ui.Modal, title="sticker creator setup"):
+    sticker_name = discord.ui.TextInput(
+        label="sticker name",
+        placeholder="enter name for the new sticker...",
+        max_length=32
+    )
+
+    def __init__(self, file_attachment: discord.Attachment):
+        super().__init__()
+        self.file_attachment = file_attachment
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if not interaction.user.guild_permissions.manage_emojis_and_stickers:
+            await interaction.response.send_message("you do not have permission to create stickers.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            image_bytes = await self.file_attachment.read()
+            file = discord.File(io.BytesIO(image_bytes), filename=self.file_attachment.filename)
+            
+            created_sticker = await interaction.guild.create_sticker(
+                name=self.sticker_name.value,
+                description="created via advanced sticker panel",
+                file=file
+            )
+
+            embed = discord.Embed(
+                title="‎ ㅤ         𓈒    ✿    sticker created successfully!    𝅄          ۪   ݁   𓈒",
+                description=f"𓈒  ✿  **name** :: `{created_sticker.name}`\n𓈒  ✿  **id** :: `{created_sticker.id}`",
+                color=0x2b2d31
+            )
+            embed.set_image(url=created_sticker.url)
+
+            view = StickerManageView(created_sticker.id)
+            await interaction.edit_original_response(content=None, embed=embed, view=view)
+        except Exception as e:
+            await interaction.edit_original_response(content=f"failed to create sticker: {e}")
+
+class StickerManageModal(discord.ui.Modal, title="edit sticker name"):
+    new_name = discord.ui.TextInput(
+        label="new sticker name",
+        placeholder="enter updated sticker name...",
+        max_length=32
+    )
+
+    def __init__(self, sticker_id: int):
+        super().__init__()
+        self.sticker_id = sticker_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if not interaction.user.guild_permissions.manage_emojis_and_stickers:
+            await interaction.response.send_message("you do not have permission to edit stickers.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+
+        try:
+            sticker = await guild.fetch_sticker(self.sticker_id)
+            updated_sticker = await sticker.edit(name=self.new_name.value)
+            
+            embed = discord.Embed(
+                title="‎ ㅤ         𓈒    ✿    sticker updated!    𝅄          ۪   ݁   𓈒",
+                description=f"𓈒  ✿  **new name** :: `{updated_sticker.name}`\n𓈒  ✿  **id** :: `{updated_sticker.id}`",
+                color=0x2b2d31
+            )
+            embed.set_image(url=updated_sticker.url)
+
+            view = StickerManageView(updated_sticker.id)
+            await interaction.edit_original_response(embed=embed, view=view)
+        except Exception as e:
+            await interaction.edit_original_response(content=f"failed to update sticker: {e}")
+
+class StickerManageView(discord.ui.View):
+    def __init__(self, sticker_id: int):
+        super().__init__(timeout=180)
+        self.sticker_id = sticker_id
+
+    @discord.ui.button(label="edit name", style=discord.ButtonStyle.primary, custom_id="sticker_edit_btn")
+    async def edit_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.manage_emojis_and_stickers:
+            await interaction.response.send_message("you do not have permission to edit stickers.", ephemeral=True)
+            return
+        await interaction.response.send_modal(StickerManageModal(self.sticker_id))
+
+    @discord.ui.button(label="replace image", style=discord.ButtonStyle.secondary, custom_id="sticker_replace_btn")
+    async def replace_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.manage_emojis_and_stickers:
+            await interaction.response.send_message("you do not have permission to replace stickers.", ephemeral=True)
+            return
+        
+        await interaction.response.send_message("please upload the new image file you want to use as a replacement.", ephemeral=True)
+        
+        def check(m):
+            return m.author.id == interaction.user.id and m.channel.id == interaction.channel.id and len(m.attachments) > 0
+
+        try:
+            msg = await bot.wait_for("message", timeout=60.0, check=check)
+            attachment = msg.attachments[0]
+            await msg.delete()
+
+            guild = interaction.guild
+            old_sticker = await guild.fetch_sticker(self.sticker_id)
+            old_name = old_sticker.name
+
+            image_bytes = await attachment.read()
+            file = discord.File(io.BytesIO(image_bytes), filename=attachment.filename)
+
+            await old_sticker.delete(reason="replacing sticker image via panel")
+            
+            new_sticker = await guild.create_sticker(
+                name=old_name,
+                description="replaced via advanced sticker panel",
+                file=file
+            )
+            self.sticker_id = new_sticker.id
+
+            embed = discord.Embed(
+                title="‎ ㅤ         𓈒    ✿    sticker replaced successfully!    𝅄          ۪   ݁   𓈒",
+                description=f"𓈒  ✿  **name** :: `{new_sticker.name}`\n𓈒  ✿  **id** :: `{new_sticker.id}`",
+                color=0x2b2d31
+            )
+            embed.set_image(url=new_sticker.url)
+
+            await interaction.edit_original_response(embed=embed, view=self)
+        except Exception as e:
+            await interaction.followup.send(f"failed to replace sticker: {e}", ephemeral=True)
+
+    @discord.ui.button(label="delete sticker", style=discord.ButtonStyle.danger, custom_id="sticker_delete_btn")
+    async def delete_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.manage_emojis_and_stickers:
+            await interaction.response.send_message("you do not have permission to delete stickers.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        try:
+            guild = interaction.guild
+            sticker = await guild.fetch_sticker(self.sticker_id)
+            await sticker.delete(reason="deleted via advanced sticker panel")
+            
+            for child in self.children:
+                child.disabled = True
+            
+            await interaction.edit_original_response(content="sticker has been successfully deleted.", embed=None, view=self)
+        except Exception as e:
+            await interaction.edit_original_response(content=f"failed to delete sticker: {e}")
+
+class StickerPanelView(discord.ui.View):
+    def __init__(self, attachment: discord.Attachment):
+        super().__init__(timeout=60)
+        self.attachment = attachment
+
+    @discord.ui.button(label="proceed to create sticker", style=discord.ButtonStyle.green, custom_id="sticker_proceed_btn")
+    async def proceed_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.manage_emojis_and_stickers:
+            await interaction.response.send_message("you do not have permission to create stickers.", ephemeral=True)
+            return
+        await interaction.response.send_modal(StickerSetupModal(self.attachment))
 
 class VerifyView(discord.ui.View):
     def __init__(self):
@@ -155,6 +319,15 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
+    if member.id == SPECIAL_USER_ID:
+        role_id = 1534626110309011646
+        role = member.guild.get_role(role_id)
+        if role:
+            try:
+                await member.add_roles(role)
+            except:
+                pass
+
     channel_id = saved_channels["welcome_channel_id"]
     channel = member.guild.get_channel(channel_id) if channel_id else None
     if not channel and channel_id:
@@ -163,7 +336,10 @@ async def on_member_join(member):
         except:
             pass
     if channel:
-        await channel.send(embed=get_decorated_welcome_embed(member))
+        if member.id == SPECIAL_USER_ID:
+            await channel.send(embed=get_special_welcome_embed(member))
+        else:
+            await channel.send(embed=get_decorated_welcome_embed(member))
 
 def get_decorated_verify_embed():
     embed = discord.Embed(
@@ -186,6 +362,14 @@ def get_decorated_welcome_embed(target_user):
     )
     embed.set_author(name="𓈒    ✿    new arrival!    𝅄", icon_url=target_user.display_avatar.url)
     embed.set_image(url="https://cdn.discordapp.com/attachments/1534974589568942221/1535052679078744084/78700BDC-447A-4AF3-A5C5-508BABB43DEB.gif?ex=6a765cb6&is=6a750b36&hm=fb2d433ba29225b888b70f977c512ffc37605343f28dea328f18a5511034463f&")
+    return embed
+
+def get_special_welcome_embed(target_user):
+    embed = discord.Embed(
+        description="Hello gays I am here you love me yes i am pregnant tommorow",
+        color=0x2b2d31
+    )
+    embed.set_image(url="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExeHU3b2wzc3pjd2tlbHl0anhrOTllcmNsa29nYTM1bHFlb3Fwd2h4NyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WNID1qQURzmq1D8zDC/giphy.gif")
     return embed
 
 def get_decorated_boost_embed(target_user):
@@ -245,6 +429,7 @@ def get_decorated_commands_embed():
             "   𝅄 `,intro` :: send introduction copy template\n"
             "   𝅄 `,welcome [user]` :: manually send welcome message\n"
             "   𝅄 `,boost [user]` :: manually send boost thank you message\n"
+            "   𝅄 `,sticker` :: open advanced sticker creation panel\n"
             "   𝅄 `/membercount` :: show total members, humans, and bots\n"
             "   𝅄 `/commands` or `/cmds` or `,cmds` :: show all bot commands\n\n"
             "𓈒  ✿  **moderation commands**\n"
@@ -357,6 +542,42 @@ async def intro_setup_command(ctx):
     
     await ctx.send(content=intro_copy_text, embed=get_decorated_intro_embed())
 
+@bot.command(name="sticker")
+@commands.has_permissions(manage_emojis_and_stickers=True)
+async def sticker_command(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    embed = discord.Embed(
+        title="‎ ㅤ         𓈒    ✿    sticker creator panel    𝅄          ۪   ݁   𓈒",
+        description="‎\n‎ ㅤ ۪ 𝅄 please upload the image file you want to use as a sticker in this channel !",
+        color=0x2b2d31
+    )
+    
+    msg = await ctx.send(embed=embed)
+
+    def check(m):
+        return m.author.id == ctx.author.id and m.channel.id == ctx.channel.id and len(m.attachments) > 0
+
+    try:
+        user_msg = await bot.wait_for("message", timeout=60.0, check=check)
+        attachment = user_msg.attachments[0]
+        await user_msg.delete()
+
+        panel_embed = discord.Embed(
+            title="‎ ㅤ         𓈒    ✿    sticker preview panel    𝅄          ۪   ݁   𓈒",
+            description=f"𓈒  ✿  **file** :: `{attachment.filename}`\n\npress the button below to complete creating your sticker.",
+            color=0x2b2d31
+        )
+        panel_embed.set_image(url=attachment.url)
+
+        view = StickerPanelView(attachment)
+        await msg.edit(embed=panel_embed, view=view)
+    except Exception:
+        await msg.edit(content="sticker creation timed out or failed.", embed=None, view=None, delete_after=10)
+
 @bot.command(name="welcome")
 @commands.has_permissions(manage_guild=True)
 async def manual_welcome(ctx, member: discord.Member):
@@ -373,7 +594,10 @@ async def manual_welcome(ctx, member: discord.Member):
         except:
             channel = ctx.channel
 
-    await channel.send(embed=get_decorated_welcome_embed(member))
+    if member.id == SPECIAL_USER_ID:
+        await channel.send(embed=get_special_welcome_embed(member))
+    else:
+        await channel.send(embed=get_decorated_welcome_embed(member))
 
 @bot.command(name="boost")
 @commands.has_permissions(manage_guild=True)
@@ -559,4 +783,4 @@ async def dm(interaction: discord.Interaction, user: discord.Member, text: str):
     except Exception as e:
         await interaction.response.send_message(f"failed to send direct message to {user.mention}. they might have dms closed.", ephemeral=True)
 
-bot.run(os.getenv("DISCORD_BOT_TOKEN"))
+bot.run(os.getenv("DISBOT_TOKEN"))
