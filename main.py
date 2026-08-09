@@ -156,7 +156,12 @@ async def on_ready():
 @bot.event
 async def on_member_join(member):
     channel_id = saved_channels["welcome_channel_id"]
-    channel = member.guild.get_channel(channel_id) if channel_id else discord.utils.get(member.guild.text_channels, name="welcome")
+    channel = member.guild.get_channel(channel_id) if channel_id else None
+    if not channel and channel_id:
+        try:
+            channel = await member.guild.fetch_channel(channel_id)
+        except:
+            pass
     if channel:
         await channel.send(embed=get_decorated_welcome_embed(member))
 
@@ -238,6 +243,8 @@ def get_decorated_commands_embed():
             "   𝅄 `,rules` :: display server rules embed\n"
             "   𝅄 `,verify` :: send verification panel button\n"
             "   𝅄 `,intro` :: send introduction copy template\n"
+            "   𝅄 `,welcome [user]` :: manually send welcome message\n"
+            "   𝅄 `,boost [user]` :: manually send boost thank you message\n"
             "   𝅄 `/membercount` :: show total members, humans, and bots\n"
             "   𝅄 `/commands` or `/cmds` or `,cmds` :: show all bot commands\n\n"
             "𓈒  ✿  **moderation commands**\n"
@@ -303,7 +310,14 @@ async def on_message(message):
             pass
 
         channel_id = saved_channels["boost_channel_id"]
-        channel = message.guild.get_channel(channel_id) if channel_id else message.channel
+        channel = message.guild.get_channel(channel_id) if channel_id else None
+        if not channel and channel_id:
+            try:
+                channel = await message.guild.fetch_channel(channel_id)
+            except:
+                pass
+        if not channel:
+            channel = message.channel
         
         if channel:
             await channel.send(embed=get_decorated_boost_embed(message.author))
@@ -342,6 +356,42 @@ async def intro_setup_command(ctx):
         pass
     
     await ctx.send(content=intro_copy_text, embed=get_decorated_intro_embed())
+
+@bot.command(name="welcome")
+@commands.has_permissions(manage_guild=True)
+async def manual_welcome(ctx, member: discord.Member):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    channel_id = saved_channels["welcome_channel_id"]
+    channel = ctx.guild.get_channel(channel_id) if channel_id else ctx.channel
+    if not channel and channel_id:
+        try:
+            channel = await ctx.guild.fetch_channel(channel_id)
+        except:
+            channel = ctx.channel
+
+    await channel.send(embed=get_decorated_welcome_embed(member))
+
+@bot.command(name="boost")
+@commands.has_permissions(manage_guild=True)
+async def manual_boost(ctx, member: discord.Member):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    channel_id = saved_channels["boost_channel_id"]
+    channel = ctx.guild.get_channel(channel_id) if channel_id else ctx.channel
+    if not channel and channel_id:
+        try:
+            channel = await ctx.guild.fetch_channel(channel_id)
+        except:
+            channel = ctx.channel
+
+    await channel.send(embed=get_decorated_boost_embed(member))
 
 @bot.command(name="c")
 @commands.has_permissions(manage_messages=True)
