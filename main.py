@@ -783,4 +783,4 @@ async def dm(interaction: discord.Interaction, user: discord.Member, text: str):
     except Exception as e:
         await interaction.response.send_message(f"failed to send direct message to {user.mention}. they might have dms closed.", ephemeral=True)
 
-bot.run(os.getenv("DISBOT_TOKEN") or os.getenv("TOKEN"))
+bot.run(os.getenv("DISCORD_BOT_TOKEN") or os.getenv("DISBOT_TOKEN") or os.getenv("TOKEN"))
