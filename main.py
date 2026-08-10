@@ -3,6 +3,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
+from datetime import timedelta
+import time
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -16,13 +18,18 @@ saved_channels = {
    "welcome_channel_id": 1534367256665002044,
    "boost_channel_id": 1534425300098875613,
    "intro_channel_id": None,
-   "mod_log_channel_id": 1536425646966706227
+   "mod_log_channel_id": 1536425646966706227,
+   "approval_channel_id": 1534974589568942221
 }
 
 SPECIAL_USER_ID = 000000000000000000
+TRIAL_MOD_ROLE_ID = 1536427161202860092
 
 user_warns = {}
 warned_messages = set()
+
+# Anti-mass ban tracking
+ban_tracker = {}
 
 blacklisted_words = [
    "chink", "nigger", "nigga", "tranny", "faggot", "retard",
@@ -180,12 +187,104 @@ class StaffApplicationModal(discord.ui.Modal, title="staff application"):
                        f"𓈒  ✿  **5. argument scenario**\n> {self.argument_ans.value}",
            color=0x2b2d31
        )
-       embed.set_footer(text="use ,staff to resend panel")
+       embed.set_footer(text=f"applicant_id:{interaction.user.id}")
 
+       view = StaffReviewView(interaction.user.id)
        if app_channel:
-           await app_channel.send(embed=embed)
+           await app_channel.send(embed=embed, view=view)
       
        await interaction.response.send_message("your staff application has been submitted successfully!", ephemeral=True)
+
+class StaffReviewView(discord.ui.View):
+   def __init__(self, applicant_id: int):
+       super().__init__(timeout=None)
+       self.applicant_id = applicant_id
+
+   @discord.ui.button(label="accept", style=discord.ButtonStyle.green, custom_id="staff_accept_btn")
+   async def accept_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+       if not interaction.user.guild_permissions.administrator:
+           await interaction.response.send_message("you do not have permission to accept applications.", ephemeral=True)
+           return
+
+       guild = interaction.guild
+       member = guild.get_member(self.applicant_id)
+       role = guild.get_role(TRIAL_MOD_ROLE_ID)
+
+       if role and member:
+           try:
+               await member.add_roles(role)
+           except:
+               pass
+
+       if member:
+           try:
+               await member.send("congratulations! your staff application for the server has been **accepted**. welcome to the team!")
+           except:
+               pass
+
+       for item in self.children:
+           item.disabled = True
+       await interaction.response.edit_message(content=f"application accepted by {interaction.user.mention}.", view=self)
+
+   @discord.ui.button(label="deny", style=discord.ButtonStyle.red, custom_id="staff_deny_btn")
+   async def deny_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+       if not interaction.user.guild_permissions.administrator:
+           await interaction.response.send_message("you do not have permission to deny applications.", ephemeral=True)
+           return
+
+       guild = interaction.guild
+       member = guild.get_member(self.applicant_id)
+
+       if member:
+           try:
+               await member.send("thank you for applying. unfortunately, your staff application has been **denied** at this time.")
+           except:
+               pass
+
+       for item in self.children:
+           item.disabled = True
+       await interaction.response.edit_message(content=f"application denied by {interaction.user.mention}.", view=self)
+
+class TrialModApprovalView(discord.ui.View):
+   def __init__(self, mod_id: int, action_type: str, target_id: int, reason: str):
+       super().__init__(timeout=None)
+       self.mod_id = mod_id
+       self.action_type = action_type
+       self.target_id = target_id
+       self.reason = reason
+
+   @discord.ui.button(label="approve", style=discord.ButtonStyle.green, custom_id="trial_approve_btn")
+   async def approve_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+       if not interaction.user.guild_permissions.administrator:
+           await interaction.response.send_message("you do not have permission to approve this action.", ephemeral=True)
+           return
+
+       guild = interaction.guild
+       target_member = guild.get_member(self.target_id)
+
+       if target_member:
+           try:
+               if self.action_type == "ban":
+                   await target_member.ban(reason=f"approved trial mod action by user id {self.mod_id}: {self.reason}")
+               elif self.action_type == "kick":
+                   await target_member.kick(reason=f"approved trial mod action by user id {self.mod_id}: {self.reason}")
+           except Exception as e:
+               await interaction.response.send_message(f"failed to execute action: {e}", ephemeral=True)
+               return
+
+       for item in self.children:
+           item.disabled = True
+       await interaction.response.edit_message(content=f"action approved and executed by {interaction.user.mention}.", view=self)
+
+   @discord.ui.button(label="decline", style=discord.ButtonStyle.red, custom_id="trial_decline_btn")
+   async def decline_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+       if not interaction.user.guild_permissions.administrator:
+           await interaction.response.send_message("you do not have permission to decline this action.", ephemeral=True)
+           return
+
+       for item in self.children:
+           item.disabled = True
+       await interaction.response.edit_message(content=f"action declined by {interaction.user.mention}.", view=self)
 
 class StaffAppView(discord.ui.View):
    def __init__(self):
@@ -296,8 +395,7 @@ def get_decorated_commands_embed():
        description=(
            "‎\n"
            "𓈒  ✿  **general** :: `,rules`, `,verify`, `,staff`, `/membercount`, `/commands`\n"
-           "𓈒  ✿  **moderation** :: `,c`, `,lock`, `/warn`, `/ban`\n"
-           "𓈒  ✿  **utility** :: `/echo`, `/dm`"
+           "𓈒  ✿  **moderation** :: `,c`, `,lock`, `/warn`, `/ban`, `/mute`"
        ),
        color=0x2b2d31
    )
@@ -517,6 +615,21 @@ async def membercount_slash(interaction: discord.Interaction):
 @bot.tree.command(name="warn", description="warn a user")
 @app_commands.describe(member="user to warn", reason="reason for warn")
 async def warn_slash(interaction: discord.Interaction, member: discord.Member, reason: str = "no reason provided"):
+   trial_role = interaction.guild.get_role(TRIAL_MOD_ROLE_ID)
+   is_trial_mod = trial_role in interaction.user.roles if trial_role else False
+
+   if is_trial_mod and not interaction.user.guild_permissions.administrator:
+       approval_channel = interaction.guild.get_channel(saved_channels["approval_channel_id"])
+       if approval_channel:
+           embed = discord.Embed(
+               title="trial mod action approval required",
+               description=f"**trial mod:** {interaction.user.mention}\n**action:** warn\n**target:** {member.mention}\n**reason:** {reason}",
+               color=0xffaa00
+           )
+           await approval_channel.send(embed=embed)
+       await interaction.response.send_message("your action requires admin approval and has been sent to the approval channel.", ephemeral=True)
+       return
+
    if not interaction.user.guild_permissions.moderate_members:
        await interaction.response.send_message("you do not have permission to warn members.", ephemeral=True)
        return
@@ -542,12 +655,91 @@ async def warn_slash(interaction: discord.Interaction, member: discord.Member, r
            
    await interaction.response.send_message(f"successfully warned {member.mention}. current warnings: {count}/3.", ephemeral=True)
 
-@bot.tree.command(name="ban", description="ban a user from the server")
+@bot.tree.command(name="mute", description="mute a user for a specified duration")
+@app_commands.describe(member="user to mute", time_str="duration (e.g. 10m, 1h, 1d)", reason="reason for mute")
+async def mute_slash(interaction: discord.Interaction, member: discord.Member, time_str: str, reason: str = "no reason provided"):
+   trial_role = interaction.guild.get_role(TRIAL_MOD_ROLE_ID)
+   is_trial_mod = trial_role in interaction.user.roles if trial_role else False
+
+   if is_trial_mod and not interaction.user.guild_permissions.administrator:
+       await interaction.response.send_message("trial mods cannot use mute without direct admin approval.", ephemeral=True)
+       return
+
+   if not interaction.user.guild_permissions.moderate_members:
+       await interaction.response.send_message("you do not have permission to mute members.", ephemeral=True)
+       return
+
+   seconds = 0
+   unit = time_str[-1].lower()
+   val = time_str[:-1]
+
+   if not val.isdigit():
+       await interaction.response.send_message("invalid time format. use something like `10m`, `1h`, or `1d`.", ephemeral=True)
+       return
+
+   amount = int(val)
+   if unit == 's':
+       seconds = amount
+   elif unit == 'm':
+       seconds = amount * 60
+   elif unit == 'h':
+       seconds = amount * 3600
+   elif unit == 'd':
+       seconds = amount * 86400
+   else:
+       await interaction.response.send_message("invalid time unit. use `s`, `m`, `h`, or `d`.", ephemeral=True)
+       return
+
+   duration = timedelta(seconds=seconds)
+   try:
+       await member.timeout(duration, reason=reason)
+       await interaction.response.send_message(f"successfully muted {member.mention} for {time_str}.", ephemeral=True)
+   except Exception as e:
+       await interaction.response.send_message(f"failed to mute user: {e}", ephemeral=True)
+
+@bot.tree.command(name="ban", description="ban a user from the server with anti-mass ban protection")
 @app_commands.describe(member="user to ban", reason="reason for ban")
 async def ban_slash(interaction: discord.Interaction, member: discord.Member, reason: str = "no reason provided"):
+   trial_role = interaction.guild.get_role(TRIAL_MOD_ROLE_ID)
+   is_trial_mod = trial_role in interaction.user.roles if trial_role else False
+
+   if is_trial_mod and not interaction.user.guild_permissions.administrator:
+       approval_channel = interaction.guild.get_channel(saved_channels["approval_channel_id"])
+       if approval_channel:
+           embed = discord.Embed(
+               title="trial mod action approval required",
+               description=f"**trial mod:** {interaction.user.mention}\n**action:** ban\n**target:** {member.mention}\n**reason:** {reason}",
+               color=0xffaa00
+           )
+           view = TrialModApprovalView(interaction.user.id, "ban", member.id, reason)
+           await approval_channel.send(embed=embed, view=view)
+       await interaction.response.send_message("your ban request has been sent to staff approval.", ephemeral=True)
+       return
+
    if not interaction.user.guild_permissions.ban_members:
        await interaction.response.send_message("you do not have permission to ban members.", ephemeral=True)
        return
+
+   # Anti-mass ban check
+   user_id = interaction.user.id
+   current_time = time.time()
+   if user_id not in ban_tracker:
+       ban_tracker[user_id] = []
+   
+   ban_tracker[user_id].append(current_time)
+   ban_tracker[user_id] = [t for t in ban_tracker[user_id] if current_time - t < 10]
+
+   if len(ban_tracker[user_id]) >= 3:
+       approval_channel = interaction.guild.get_channel(saved_channels["approval_channel_id"])
+       if approval_channel:
+           await approval_channel.send(f"⚠️ **SECURITY ALERT:** Moderator {interaction.user.mention} is mass-banning users! Action has been intercepted.")
+       try:
+           await interaction.user.remove_roles(*(interaction.user.roles[1:]))
+           await interaction.response.send_message("mass banning detected. your roles have been stripped.", ephemeral=True)
+       except:
+           await interaction.response.send_message("mass banning detected, but failed to strip roles.", ephemeral=True)
+       return
+
    try:
        await member.ban(reason=reason)
        await interaction.response.send_message(f"successfully banned {member.mention}.", ephemeral=True)
