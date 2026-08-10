@@ -23,6 +23,7 @@ SPECIAL_USER_ID = 000000000000000000
 
 user_warns = {}
 warned_messages = set()
+pending_applications = {}
 
 blacklisted_words = [
    "chink", "nigger", "nigga", "tranny", "faggot", "retard",
@@ -134,31 +135,7 @@ class ModActionView(discord.ui.View):
        warned_messages.add(interaction.message.id)
        await interaction.response.send_message(f"successfully warned <@{self.target_user_id}>. current warnings: {count}/3.", ephemeral=True)
 
-class StaffApplicationModal(discord.ui.Modal, title="staff application"):
-   intro_ans = discord.ui.TextInput(
-       label="1. introduce yourself",
-       style=discord.TextStyle.paragraph,
-       placeholder="name, age, timezone...",
-       max_length=400
-   )
-   stand_out_ans = discord.ui.TextInput(
-       label="2. what makes you stand out?",
-       style=discord.TextStyle.paragraph,
-       placeholder="unique qualities, skills...",
-       max_length=400
-   )
-   weaknesses_ans = discord.ui.TextInput(
-       label="3. do you have any weaknesses?",
-       style=discord.TextStyle.paragraph,
-       placeholder="how do you manage or improve them...",
-       max_length=400
-   )
-   team_ans = discord.ui.TextInput(
-       label="4. how well do you work as a team?",
-       style=discord.TextStyle.paragraph,
-       placeholder="collaboration and communication...",
-       max_length=400
-   )
+class StaffApplicationModalPart2(discord.ui.Modal, title="staff application (part 2/2)"):
    experience_ans = discord.ui.TextInput(
        label="5. previous experience?",
        style=discord.TextStyle.paragraph,
@@ -185,16 +162,17 @@ class StaffApplicationModal(discord.ui.Modal, title="staff application"):
    )
 
    async def on_submit(self, interaction: discord.Interaction):
+       part1 = pending_applications.pop(interaction.user.id, {})
        app_channel_id = saved_channels.get("mod_log_channel_id")
        app_channel = interaction.guild.get_channel(app_channel_id) if app_channel_id else interaction.channel
 
        embed = discord.Embed(
            title="‎ ㅤ         𓈒    ✿    new staff application    𝅄          ۪    ݁    𓈒",
            description=f"𓈒  ✿  **applicant** :: {interaction.user.mention} (`{interaction.user.id}`)\n\n"
-                       f"𓈒  ✿  **1. introduction**\n> {self.intro_ans.value}\n\n"
-                       f"𓈒  ✿  **2. stands out**\n> {self.stand_out_ans.value}\n\n"
-                       f"𓈒  ✿  **3. weaknesses**\n> {self.weaknesses_ans.value}\n\n"
-                       f"𓈒  ✿  **4. teamwork**\n> {self.team_ans.value}\n\n"
+                       f"𓈒  ✿  **1. introduction**\n> {part1.get('intro', 'N/A')}\n\n"
+                       f"𓈒  ✿  **2. stands out**\n> {part1.get('stand_out', 'N/A')}\n\n"
+                       f"𓈒  ✿  **3. weaknesses**\n> {part1.get('weaknesses', 'N/A')}\n\n"
+                       f"𓈒  ✿  **4. teamwork**\n> {part1.get('team', 'N/A')}\n\n"
                        f"𓈒  ✿  **5. experience**\n> {self.experience_ans.value}\n\n"
                        f"𓈒  ✿  **6. activity**\n> {self.activity_ans.value}\n\n"
                        f"𓈒  ✿  **7. raid scenario**\n> {self.raid_ans.value}\n\n"
@@ -208,13 +186,48 @@ class StaffApplicationModal(discord.ui.Modal, title="staff application"):
       
        await interaction.response.send_message("your staff application has been submitted successfully!", ephemeral=True)
 
+class StaffApplicationModalPart1(discord.ui.Modal, title="staff application (part 1/2)"):
+   intro_ans = discord.ui.TextInput(
+       label="1. introduce yourself",
+       style=discord.TextStyle.paragraph,
+       placeholder="name, age, timezone...",
+       max_length=400
+   )
+   stand_out_ans = discord.ui.TextInput(
+       label="2. what makes you stand out?",
+       style=discord.TextStyle.paragraph,
+       placeholder="unique qualities, skills...",
+       max_length=400
+   )
+   weaknesses_ans = discord.ui.TextInput(
+       label="3. do you have any weaknesses?",
+       style=discord.TextStyle.paragraph,
+       placeholder="how do you manage or improve them...",
+       max_length=400
+   )
+   team_ans = discord.ui.TextInput(
+       label="4. how well do you work as a team?",
+       style=discord.TextStyle.paragraph,
+       placeholder="collaboration and communication...",
+       max_length=400
+   )
+
+   async def on_submit(self, interaction: discord.Interaction):
+       pending_applications[interaction.user.id] = {
+           "intro": self.intro_ans.value,
+           "stand_out": self.stand_out_ans.value,
+           "weaknesses": self.weaknesses_ans.value,
+           "team": self.team_ans.value
+       }
+       await interaction.response.send_modal(StaffApplicationModalPart2())
+
 class StaffAppView(discord.ui.View):
    def __init__(self):
        super().__init__(timeout=None)
 
    @discord.ui.button(label="apply for staff", style=discord.ButtonStyle.green, custom_id="apply_staff_button")
    async def apply_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-       await interaction.response.send_modal(StaffApplicationModal())
+       await interaction.response.send_modal(StaffApplicationModalPart1())
 
 @bot.event
 async def on_ready():
