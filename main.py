@@ -138,49 +138,49 @@ class StaffApplicationModal(discord.ui.Modal, title="staff application"):
    intro_ans = discord.ui.TextInput(
        label="1. introduce yourself",
        style=discord.TextStyle.paragraph,
-       placeholder="please include your name, age, and timezone...",
+       placeholder="name, age, timezone...",
        max_length=400
    )
    stand_out_ans = discord.ui.TextInput(
        label="2. what makes you stand out?",
        style=discord.TextStyle.paragraph,
-       placeholder="tell us what unique qualities, skills, or experiences...",
+       placeholder="unique qualities, skills...",
        max_length=400
    )
    weaknesses_ans = discord.ui.TextInput(
        label="3. do you have any weaknesses?",
        style=discord.TextStyle.paragraph,
-       placeholder="explain what they are and how you manage or improve them...",
+       placeholder="how do you manage or improve them...",
        max_length=400
    )
    team_ans = discord.ui.TextInput(
-       label="4. how well do you work as part of a team?",
+       label="4. how well do you work as a team?",
        style=discord.TextStyle.paragraph,
-       placeholder="describe how comfortable you are collaborating...",
+       placeholder="collaboration and communication...",
        max_length=400
    )
    experience_ans = discord.ui.TextInput(
-       label="5. previous experience in other servers?",
+       label="5. previous experience?",
        style=discord.TextStyle.paragraph,
-       placeholder="tell us about your previous roles and links...",
+       placeholder="past roles and server links...",
        max_length=400
    )
    activity_ans = discord.ui.TextInput(
        label="6. how active are you?",
        style=discord.TextStyle.paragraph,
-       placeholder="let us know how often you are available...",
+       placeholder="availability and hours per day...",
        max_length=400
    )
    raid_ans = discord.ui.TextInput(
        label="7. raid scenario",
        style=discord.TextStyle.paragraph,
-       placeholder="explain steps you would take to handle the raid...",
+       placeholder="steps to handle a server raid...",
        max_length=400
    )
    argument_ans = discord.ui.TextInput(
        label="8. member argument scenario",
        style=discord.TextStyle.paragraph,
-       placeholder="what would you do to handle the situation calmly...",
+       placeholder="handling drama calmly and fairly...",
        max_length=400
    )
 
@@ -297,23 +297,15 @@ def get_decorated_rules_embed():
        description=(
            "‎\n"
            "𓈒  ✿  **no slurs**\n"
-           "   𝅄 please keep our chat safe and kind. racist, homophobic, or hate-driven language is strictly prohibited.\n\n"
+           "   𝅄 racist, homophobic, or hate-driven language is strictly prohibited.\n\n"
            "𓈒  ✿  **follow guidelines**\n"
-           "   𝅄 please adhere to discord's formal terms of service to safeguard our community atmosphere.\n\n"
+           "   𝅄 adhere to discord's terms of service.\n\n"
            "𓈒  ✿  **no nsfw or toxicity**\n"
-           "   𝅄 avoid any explicit content, e-dating behaviors, or general toxicity inside public text areas.\n\n"
-           "𓈒  ✿  **use common sense**\n"
-           "   𝅄 think before you speak. malicious language, severe harassment, or encouraging self-harm is not tolerated.\n\n"
+           "   𝅄 avoid explicit content, e-dating, and public toxicity.\n\n"
            "𓈒  ✿  **no public drama**\n"
-           "   𝅄 keep interpersonal arguments or disagreements strictly inside private message chats. if an issue escalates or requires dynamic moderation, please immediately alert <@&1534625978884690061> or <@&1534626036556365824> so our staff team can assess the room.\n\n"
-           "𓈒  ✿  **privacy & safety**\n"
-           "   𝅄 never share sensitive real-world info like IP or home addresses. malicious doxxing triggers an unappealable ban.\n\n"
-           "𓈒  ✿  **no spam or promotion**\n"
-           "   𝅄 do not spam text walls or link advertisements without permissions. please open a staff ticket if you wish to apply for promotional privileges.\n\n"
+           "   𝅄 keep arguments in private messages or ping staff.\n\n"
            "𓈒  ✿  **3 warn system**\n"
-           "   𝅄 receiving 3 formal staff warnings results in an automatic ban from the server.\n\n"
-           "𓈒  ✿  **consequences**\n"
-           "   𝅄 infractions result in account mutes, kicks, or server bans. you may coordinate with staff privately regarding appeal requests."
+           "   𝅄 receiving 3 formal staff warnings results in an automatic ban."
        ),
        color=0x2b2d31
    )
@@ -324,22 +316,9 @@ def get_decorated_commands_embed():
        title="‎ ㅤ         𓈒    ✿    bot commands list    𝅄          ۪    ݁    𓈒",
        description=(
            "‎\n"
-           "𓈒  ✿  **general commands**\n"
-           "   𝅄 `,rules` :: display server rules embed\n"
-           "   𝅄 `,verify` :: send verification panel button\n"
-           "   𝅄 `,welcome [user]` :: manually send welcome message\n"
-           "   𝅄 `,boost [user]` :: manually send boost thank you message\n"
-           "   𝅄 `,staff` :: send staff application panel\n"
-           "   𝅄 `/membercount` :: show total members, humans, and bots\n"
-           "   𝅄 `/commands` or `/cmds` or `,cmds` :: show all bot commands\n\n"
-           "𓈒  ✿  **moderation commands**\n"
-           "   𝅄 `,c [amount]` :: clear messages in channel\n"
-           "   𝅄 `,lock` :: lock current channel for verified role\n"
-           "   𝅄 `/warn [user] [reason]` :: warn a user (auto-bans at 3 warns)\n"
-           "   𝅄 `/ban [user] [time] [reason]` :: ban a user from the server\n\n"
-           "𓈒  ✿  **utility commands**\n"
-           "   𝅄 `/echo [message] [channel]` :: send an echoed message\n"
-           "   𝅄 `/dm [user] [text]` :: direct message a user through the bot"
+           "𓈒  ✿  **general** :: `,rules`, `,verify`, `,staff`, `/membercount`, `/commands`\n"
+           "𓈒  ✿  **moderation** :: `,c`, `,lock`, `/warn`, `/ban`\n"
+           "𓈒  ✿  **utility** :: `/echo`, `/dm`"
        ),
        color=0x2b2d31
    )
@@ -350,19 +329,11 @@ def get_decorated_staff_app_embed():
        title="‎ ㅤ         𓈒    ✿    staff applications    𝅄          ۪    ݁    𓈒",
        description=(
            "‎\n"
-           "Staff Application\n\n"
-           "Please answer the following questions with clear grammar and as much detail as possible. We recommend writing 3–5 sentences per question to give yourself the best chance of being considered for a staff position.\n\n"
-           "1. Introduce yourself.\nPlease include your name, age, and timezone.\n\n"
-           "2. What makes you stand out from other applicants?\nTell us what unique qualities, skills, or experiences you could bring to the staff team.\n\n"
-           "3. Do you have any weaknesses?\nIf you have any qualities that could be considered a weakness, explain what they are and how you manage or improve them.\n\n"
-           "4. How well do you work as part of a team?\nDescribe how comfortable you are collaborating with other staff members and handling situations together.\n\n"
-           "5. Do you have previous experience in other servers?\nIf so, tell us about your previous roles and responsibilities. If possible, please provide links to the servers so we can verify your experience.\n\n"
-           "6. How active are you?\nLet us know how often you are available and approximately how much time you are willing to dedicate to the server.\n\n"
-           "7. Raid scenario\nImagine a raid occurs where the raiders delete all of the channels, while a bot creates multiple channels with inappropriate names. Explain what steps you would take to handle the situation and help restore the server.\n\n"
-           "8. Member argument scenario\nTwo members begin arguing in chat while no other staff members are online. What would you do to handle the situation calmly and fairly?\n\n"
-           "⸻\n\n"
-           "Once you have answered all of the prompts, your application will be reviewed by the server staff. Please be patient while waiting for a response. Do not repeatedly ask about the status of your application, as doing so may negatively affect your chances of being selected.\n\n"
-           "‎ ㅤ ۪ 𝅄 click the button below to open the application form and apply for a staff position !"
+           "want to help our team grow and keep the community safe? fill out an application below!\n\n"
+           "**requirements:**\n"
+           "• be active and respectful\n"
+           "• provide honest and detailed answers\n\n"
+           "‎ ㅤ ۪ 𝅄 click the button below to open the application form !"
        ),
        color=0x2b2d31
    )
