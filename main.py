@@ -52,4 +52,4 @@ async def rename_to_all(ctx):
 async def on_ready():
     print(f"logged in as {bot.user}".lower())
 
-bot.run("YOUR_NEW_BOT_TOKEN_HERE")
+bot.run("MTUzNDk2OTMxNjkyMTgzNTcxMA.GXZbka.Y9vEGjE3DHRQBq2iAZIDhGcwb4EwK7s8bI-M7U")
