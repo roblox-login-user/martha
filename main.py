@@ -61,4 +61,4 @@ class orderbuttons(discord.ui.View):
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("order cancelled", ephemeral=True)
 
-bot.run("MTUzMTQwNTYzOTI1Nzk0ODE3MA.Gzdz3j.7vymPtKf99m_Z4k6jq5yhkhmsfrgSQadn8S7fg")
+bot.run("MTUzMTQwNTYzOTI1Nzk0ODE3MA.GFda6Q.tDt_KATdlU0C80aLSMr8ZRUilogSbTJWJsmNXU")
